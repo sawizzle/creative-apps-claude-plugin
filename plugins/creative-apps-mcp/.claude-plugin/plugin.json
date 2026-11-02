@@ -1,7 +1,7 @@
 {
   "name": "creative-apps-mcp",
-  "version": "0.2.0",
-  "description": "Unofficial third-party plugin: drive PhotoCraft, VectorCraft, FilmCraft, LightCraft, PdfCraft, EffectCraft and DesignCraft from Claude Code through their built-in MCP servers, with a tested skill per app. Not made, sponsored, endorsed, certified or supported by the apps' developers.",
+  "version": "0.3.0",
+  "description": "Unofficial third-party plugin: drive PhotoCraft, VectorCraft, FilmCraft, LightCraft, PdfCraft, EffectCraft, DesignCraft, FigCraft, WordCraft, DeckCraft, GridCraft, CADCraft and SoundCraft from Claude Code through their built-in MCP servers, with a tested skill per app. Not made, sponsored, endorsed, certified or supported by the apps' developers.",
   "author": {
     "name": "PurpleDaddy",
     "url": "https://github.com/sawizzle"
@@ -17,20 +17,47 @@
     "pdfcraft",
     "effectcraft",
     "designcraft",
+    "figcraft",
+    "wordcraft",
+    "deckcraft",
+    "gridcraft",
+    "cadcraft",
+    "soundcraft",
     "mcp"
   ],
   "userConfig": {
+    "write_root": {
+      "type": "directory",
+      "title": "Output folder (write root)",
+      "description": "The one folder the folder-locked apps may write to, and where every app starts. Empty = ~/CreativeApps (created when needed). Refused: your home folder, a drive root, a folder overlapping ~/.claude, ~/.ssh, AppData or Program Files, or one holding a .git, .claude or CLAUDE.md within two levels. Keep it an outputs-only folder.",
+      "default": "",
+      "required": false
+    },
+    "read_scope": {
+      "type": "string",
+      "title": "Read access",
+      "description": "What the folder-locked apps may read: content-folders (default: the output folder plus your Desktop, Documents, Downloads, Pictures, Videos and Music folders), write-root-only, or home (your whole home folder). PhotoCraft, PdfCraft and WordCraft read one folder only: the output folder, your home folder with home, or extra_read_root if set.",
+      "default": "content-folders",
+      "required": false
+    },
+    "extra_read_root": {
+      "type": "directory",
+      "title": "Extra read folder",
+      "description": "Optional extra folder the folder-locked apps may read. It must exist and may not be a drive root or contain your settings folders. PhotoCraft, PdfCraft and WordCraft then read only this folder, so they cannot reopen their own saves unless the output folder is inside it (put write_root inside it to keep that).",
+      "default": "",
+      "required": false
+    },
     "photocraft_read_root": {
       "type": "directory",
-      "title": "PhotoCraft read root",
-      "description": "Folder PhotoCraft may read from; its tool paths are relative to it. Empty = $PHOTOCRAFT_READ_ROOT, else your home folder.",
+      "title": "PhotoCraft read root (from 0.2.0)",
+      "description": "Kept from 0.2.0: if set, PhotoCraft reads only from this folder. It must exist and may not be a drive root or contain your settings folders.",
       "default": "",
       "required": false
     },
     "photocraft_write_root": {
       "type": "directory",
-      "title": "PhotoCraft write root",
-      "description": "Folder PhotoCraft may write (and overwrite files) in; export paths are relative to it. Empty = $PHOTOCRAFT_WRITE_ROOT, else ~/PhotoCraft.",
+      "title": "PhotoCraft write root (from 0.2.0)",
+      "description": "Kept from 0.2.0: if set, PhotoCraft writes here instead of the shared output folder.",
       "default": "",
       "required": false
     }

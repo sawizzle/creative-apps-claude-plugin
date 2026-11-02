@@ -1,7 +1,107 @@
-[{"tool":"doc_create","args":{"from":"blank","pages":2}},
- {"tool":"page_add_text","args":{"doc":1,"page":1,"text":"MCP smoke test\nPdfCraft page 1","at":[72,72],"size":24,"bold":true,"width":450}},
- {"tool":"doc_save","args":{"doc":1,"path":"{OUT}/pdfcraft_out.pdf"}},
- {"tool":"doc_open","args":{"path":"{OUT}/pdfcraft_out.pdf"}},
- {"tool":"text_extract","args":{"doc":2}},
- {"tool":"doc_info","args":{"doc":2}},
- {"tool":"page_render","args":{"doc":2,"page":1,"dpi":72}}]
+[
+ {"tool": "tool_call", "args": {"name": "doc_create", "arguments": {"from": "blank", "pages": 2}},
+  "capture": {"doc": "/doc"},
+  "expect": [{"json": "/pages", "eq": 2}, {"json": "/dirty", "eq": true}, {"json": "/path", "eq": null}]},
+
+ {"tool": "tool_call", "args": {"name": "page_add_text", "arguments": {"doc": "${doc}", "page": 1, "text": "MCP smoke test", "at": [72, 72], "size": 36, "bold": true, "color": "#FF0000", "width": 450}},
+  "expect": [{"json": "/index", "eq": 1}, {"json": "/undo", "eq": "Add text"}]},
+
+ {"tool": "tool_call", "args": {"name": "page_add_text", "arguments": {"doc": "${doc}", "page": 1, "text": "Secret code: ALPHA-7731 end", "at": [72, 160], "size": 18, "width": 450}},
+  "expect": [{"json": "/index", "eq": 2}]},
+
+ {"tool": "tool_call", "args": {"name": "page_add_image", "arguments": {"doc": "${doc}", "page": 1, "path": "{IN}/test_card.png", "rect": [72, 300, 552, 570]}},
+  "expect": [{"json": "/rect", "eq": [72.0, 300.0, 552.0, 570.0]}, {"json": "/undo", "eq": "Add image"}]},
+
+ {"tool": "tool_call", "args": {"name": "page_add_text", "arguments": {"doc": "${doc}", "page": 2, "text": "UNDO ME", "at": [72, 72]}}},
+ {"tool": "edit_undo", "args": {"doc": "${doc}"},
+  "expect": [{"json": "/undone", "eq": "Add text"}, {"json": "/document/redo", "eq": "Add text"}]},
+ {"tool": "text_find", "args": {"doc": "${doc}", "query": "undo me"},
+  "expect": [{"json": "/count", "eq": 0}]},
+
+ {"tool": "tool_call", "args": {"name": "redact_mark", "arguments": {"doc": "${doc}", "find": "ALPHA-7731"}},
+  "expect": [{"json": "/marked", "eq": 1}, {"json": "/marks_pending", "eq": 1}]},
+ {"tool": "tool_call", "args": {"name": "redact_apply", "arguments": {"doc": "${doc}"}},
+  "expect": [{"json": "/applied", "eq": 1}, {"json": "/marks_pending", "eq": 0}]},
+
+ {"tool": "page_rotate", "args": {"doc": "${doc}", "pages": [2], "degrees": 90},
+  "expect": [{"json": "/rotated", "eq": 1}]},
+
+ {"tool": "tool_call", "args": {"name": "doc_set_info", "arguments": {"doc": "${doc}", "key": "Title", "value": "PdfCraft smoke"}},
+  "expect": [{"json": "/undo", "eq": "Change Title"}]},
+
+ {"tool": "text_extract", "args": {"doc": "${doc}"},
+  "expect": [{"json": "/pages/0/text", "contains": "MCP smoke test"}, {"json": "/pages/0/text", "contains": "Secret code:"},
+             {"text_not_contains": "ALPHA-7731"}, {"json": "/pages/1/text", "eq": ""}]},
+
+ {"tool": "render_preview", "args": {"doc": "${doc}", "page": 1, "max_side": 792},
+  "expect": [{"file": "$img", "min_bytes": 2000}, {"media": "$img", "width": 612, "height": 792},
+             {"pixel": "$img", "x": 75, "y": 95, "rgb": [255, 0, 0], "tol": 40},
+             {"pixel": "$img", "x": 230, "y": 171, "rgb": [0, 0, 0], "tol": 20},
+             {"pixel": "$img", "x": 312, "y": 382, "rgb": [240, 200, 40], "tol": 12},
+             {"pixel": "$img", "x": 98, "y": 450, "rgb": [0, 200, 90], "tol": 12},
+             {"pixel": "$img", "x": 518, "y": 450, "rgb": [210, 60, 230], "tol": 12},
+             {"pixel": "$img", "x": 300, "y": 700, "rgb": [255, 255, 255], "tol": 4}]},
+
+ {"tool": "doc_save", "args": {"doc": "${doc}", "path": "{OUT}/pdfcraft_smoke.pdf"},
+  "expect": [{"json": "/incremental", "eq": false}, {"json": "/document/dirty", "eq": false},
+             {"file": "{OUT}/pdfcraft_smoke.pdf", "min_bytes": 15000},
+             {"run": ["{CLI}", "audit", "{OUT}/pdfcraft_smoke.pdf"], "exit": 0, "stdout_contains": "\"count\":0"}]},
+
+ {"tool": "tool_call", "args": {"name": "doc_export_office", "arguments": {"doc": "${doc}", "path": "{OUT}/pdfcraft_smoke.docx"}},
+  "expect": [{"json": "/format", "eq": "docx"}, {"json": "/truncated", "eq": false},
+             {"zip_text": "{OUT}/pdfcraft_smoke.docx", "member": "word/document.xml", "contains": ">MCP smoke test</w:t>"},
+             {"zip_text": "{OUT}/pdfcraft_smoke.docx", "member": "word/document.xml", "contains": "<w:b/><w:color w:val=\"FF0000\"/>"},
+             {"zip_text": "{OUT}/pdfcraft_smoke.docx", "member": "word/media/image1.png", "contains": "PNG"},
+             {"zip_text": "{OUT}/pdfcraft_smoke.docx", "member": "docProps/core.xml", "contains": "<dc:title>PdfCraft smoke</dc:title>"}]},
+
+ {"tool": "tool_call", "args": {"name": "doc_export_images", "arguments": {"doc": "${doc}", "folder": "{OUT}/pdfcraft_png", "format": "png", "dpi": 72, "pages": [1]}},
+  "expect": [{"json": "/count", "eq": 1},
+             {"media": "{OUT}/pdfcraft_png/pdfcraft_smoke_page_1.png", "width": 612, "height": 792},
+             {"pixel": "{OUT}/pdfcraft_png/pdfcraft_smoke_page_1.png", "x": 312, "y": 382, "rgb": [240, 200, 40], "tol": 12},
+             {"pixel": "{OUT}/pdfcraft_png/pdfcraft_smoke_page_1.png", "x": 230, "y": 171, "rgb": [0, 0, 0], "tol": 20}]},
+
+ {"restart": true},
+
+ {"tool": "doc_open", "args": {"path": "{OUT}/pdfcraft_smoke.pdf"},
+  "capture": {"doc2": "/doc"},
+  "expect": [{"json": "/pages", "eq": 2}, {"json": "/dirty", "eq": false}, {"json": "/editable", "eq": true}]},
+
+ {"tool": "doc_info", "args": {"doc": "${doc2}"},
+  "expect": [{"json": "/title", "eq": "PdfCraft smoke"}, {"json": "/pages/0/width", "eq": 612.0}, {"json": "/pages/0/height", "eq": 792.0},
+             {"json": "/pages/0/rotation", "eq": 0}, {"json": "/pages/1/rotation", "eq": 90}, {"json": "/annotations", "len": 0},
+             {"text_contains": "\"name\": \"Helvetica-Bold\""}]},
+
+ {"tool": "text_extract", "args": {"doc": "${doc2}"},
+  "expect": [{"json": "/pages/0/text", "contains": "MCP smoke test"}, {"json": "/pages/0/text", "contains": "Secret code:"},
+             {"text_not_contains": "ALPHA"}]},
+
+ {"tool": "tool_call", "args": {"name": "content_list", "arguments": {"doc": "${doc2}"}},
+  "expect": [{"json": "/count", "eq": 2}, {"json": "/items/0/text", "eq": "MCP smoke test"}, {"json": "/items/0/bold", "eq": true},
+             {"json": "/items/1/type", "eq": "image"}, {"json": "/items/1/rect", "eq": [72.0, 300.0, 552.0, 570.0]}]},
+
+ {"tool": "page_render", "args": {"doc": "${doc2}", "page": 1, "dpi": 72},
+  "expect": [{"media": "$img", "width": 612, "height": 792},
+             {"pixel": "$img", "x": 75, "y": 95, "rgb": [255, 0, 0], "tol": 40},
+             {"pixel": "$img", "x": 230, "y": 171, "rgb": [0, 0, 0], "tol": 20},
+             {"pixel": "$img", "x": 312, "y": 382, "rgb": [240, 200, 40], "tol": 12},
+             {"pixel": "$img", "x": 98, "y": 450, "rgb": [0, 200, 90], "tol": 12},
+             {"pixel": "$img", "x": 300, "y": 700, "rgb": [255, 255, 255], "tol": 4},
+             {"run": ["{CLI}", "text", "{OUT}/pdfcraft_smoke.pdf"], "exit": 0, "stdout_contains": "MCP smoke test"}]},
+
+ {"tool": "page_render", "args": {"doc": "${doc2}", "page": 2, "dpi": 72},
+  "expect": [{"media": "$img", "width": 792, "height": 612}, {"pixel": "$img", "x": 396, "y": 306, "rgb": [255, 255, 255], "tol": 4}]},
+
+ {"tool": "tool_call", "args": {"name": "content_update", "arguments": {"doc": "${doc2}", "page": 1, "index": 1, "color": "#00A000"}},
+  "expect": [{"json": "/dirty", "eq": true}]},
+ {"tool": "tool_call", "args": {"name": "doc_set_info", "arguments": {"doc": "${doc2}", "key": "Author", "value": "smoke-reopen"}},
+  "expect": [{"json": "/dirty", "eq": true}]},
+ {"tool": "doc_save", "args": {"doc": "${doc2}"},
+  "expect": [{"json": "/incremental", "eq": true},
+             {"run": ["{CLI}", "info", "{OUT}/pdfcraft_smoke.pdf"], "exit": 0, "stdout_contains": "\"author\": \"smoke-reopen\""},
+             {"run": ["{CLI}", "render", "{OUT}/pdfcraft_smoke.pdf", "--page", "1", "--dpi", "72", "--out", "{OUT}/pdfcraft_final_p1.png"], "exit": 0},
+             {"media": "{OUT}/pdfcraft_final_p1.png", "width": 612, "height": 792},
+             {"pixel": "{OUT}/pdfcraft_final_p1.png", "x": 75, "y": 95, "rgb": [0, 160, 0], "tol": 40},
+             {"pixel": "{OUT}/pdfcraft_final_p1.png", "x": 312, "y": 382, "rgb": [240, 200, 40], "tol": 12}]},
+ {"tool": "doc_close", "args": {"doc": "${doc2}"},
+  "expect": [{"json": "/closed", "eq": "${doc2}"}]}
+]

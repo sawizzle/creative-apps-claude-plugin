@@ -1,84 +1,254 @@
 [
- {
-  "tool": "media_import",
-  "args": {
-   "text": "{IN}/test_clip.mp4"
-  }
- },
- {
-  "tool": "command_run",
-  "args": {
-   "id": "file.newSequenceFromClip",
-   "params": {
-    "items": [
-     1
-    ]
-   }
-  }
- },
- {
-  "tool": "command_run",
-  "args": {
-   "id": "timeline.razor",
-   "params": {
-    "seconds": 1.5
-   }
-  }
- },
- {
-  "tool": "command_run",
-  "args": {
-   "id": "effects.apply",
-   "params": {
-    "clips": [
-     6
-    ],
-    "effect": "Gaussian Blur"
-   }
-  }
- },
- {
-  "tool": "command_run",
-  "args": {
-   "id": "effects.setParam",
-   "params": {
-    "clip": 6,
-    "effect": "gaussian_blur",
-    "param": "blurriness",
-    "value": 40
-   }
-  }
- },
- {
-  "tool": "sequence_inspect",
-  "args": {}
- },
- {
-  "tool": "render_frame",
-  "args": {
-   "seconds": 1.0,
-   "max_side": 640
-  }
- },
- {
-  "tool": "command_run",
-  "args": {
-   "id": "file.exportMedia",
-   "params": {
-    "path": "{OUT}/filmcraft_out.mp4",
-    "format": "h264",
-    "wait": true
-   }
-  },
-  "timeout": 300
- },
- {
-  "tool": "command_run",
-  "args": {
-   "id": "file.exportFcpxml",
-   "params": {
-    "path": "{OUT}/filmcraft_out.fcpxml"
-   }
-  }
- }
+ {"tool": "media_import", "args": {"paths": ["{IN}/test_clip.mp4"]}, "capture": {"item": "/items/0"}, "expect": [
+   {"json": "/errors", "len": 0},
+   {"json": "/items", "len": 1}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.newSequenceFromClip", "params": {"items": ["${item}"]}}, "capture": {"seq": "/sequence"}, "expect": [
+   {"json": "/clips", "len": 2}
+  ]},
+ {"tool": "command_run", "args": {"id": "timeline.razor", "params": {"seconds": 1.0}}, "expect": [
+   {"json": "/cuts", "eq": 2}
+  ]},
+ {"tool": "sequence_inspect", "args": {}, "capture": {"tail": "/video/0/items/1/clip"}, "expect": [
+   {"json": "/id", "eq": "${seq}"},
+   {"json": "/durationFrames", "eq": 48},
+   {"json": "/in", "eq": null},
+   {"json": "/video/0/items", "len": 2},
+   {"json": "/video/0/items/0/endFrame", "eq": 24},
+   {"json": "/video/0/items/1/startFrame", "eq": 24},
+   {"json": "/audio/0/items", "len": 2}
+  ]},
+ {"tool": "command_run", "args": {"id": "effects.apply", "params": {"clips": ["${tail}"], "effect": "invert"}}, "expect": [
+   {"json": "/applied/0/clip", "eq": "${tail}"},
+   {"json": "/applied/0/effect", "eq": "invert"}
+  ]},
+ {"tool": "command_run", "args": {"id": "graphics.newRectangle", "params": {"position": [320, 180], "size": [200, 100], "seconds": 2, "time": 0}}, "capture": {"gfx": "/clip"}, "expect": [
+   {"json": "/layer", "eq": 0}
+  ]},
+ {"tool": "render_frame", "args": {"seconds": 0.5}, "expect": [
+   {"pixel": "$img", "x": 300, "y": 150, "rgb": [217, 51, 64], "tol": 12}
+  ]},
+ {"tool": "command_run", "args": {"id": "graphics.set", "params": {"clip": "${gfx}", "layer": 0, "props": {"fill_color": "#ff8000"}}}},
+ {"tool": "command_run", "args": {"id": "markers.add", "params": {"seconds": 1.25, "name": "SMOKE_MARKER"}}, "expect": [
+   {"json": "/marker", "gte": 1}
+  ]},
+ {"tool": "render_frame", "args": {"seconds": 0.5}, "expect": [
+   {"file": "$img", "min_bytes": 10000},
+   {"media": "$img", "width": 640, "height": 360},
+   {"pixel": "$img", "x": 300, "y": 150, "rgb": [255, 128, 0], "tol": 12},
+   {"pixel": "$img", "x": 580, "y": 200, "rgb": [0, 255, 255], "tol": 12}
+  ]},
+ {"tool": "render_frame", "args": {"seconds": 1.5}, "expect": [
+   {"pixel": "$img", "x": 300, "y": 150, "rgb": [255, 128, 0], "tol": 12},
+   {"pixel": "$img", "x": 580, "y": 200, "rgb": [255, 0, 0], "tol": 12},
+   {"pixel": "$img", "x": 50, "y": 200, "rgb": [0, 255, 255], "tol": 12}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.saveAs", "params": {"path": "{OUT}/filmcraft_smoke.fcproj"}}, "expect": [
+   {"json": "/bytes", "gte": 2000},
+   {"file": "{OUT}/filmcraft_smoke.fcproj", "min_bytes": 2000},
+   {"file_text": "{OUT}/filmcraft_smoke.fcproj", "contains": "\"effect\":\"invert\""},
+   {"file_text": "{OUT}/filmcraft_smoke.fcproj", "contains": "\"name\":\"SMOKE_MARKER\""}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.exportMedia", "params": {"path": "{OUT}/filmcraft_smoke.mp4", "format": "h264", "wait": true}}, "timeout": 120, "expect": [
+   {"json": "/result/frames", "eq": 48},
+   {"media": "{OUT}/filmcraft_smoke.mp4", "codec": "h264", "width": 640, "height": 360, "fps": 24, "frames": 48},
+   {"run": ["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name,sample_rate,channels", "-of", "csv=p=0", "{OUT}/filmcraft_smoke.mp4"], "stdout_contains": "aac,48000,2", "exit": 0},
+   {"run": ["ffmpeg", "-v", "error", "-y", "-i", "{OUT}/filmcraft_smoke.mp4", "-frames:v", "1", "{OUT}/filmcraft_smoke_f00.png"], "exit": 0},
+   {"pixel": "{OUT}/filmcraft_smoke_f00.png", "x": 300, "y": 150, "rgb": [255, 128, 0], "tol": 30},
+   {"pixel": "{OUT}/filmcraft_smoke_f00.png", "x": 580, "y": 200, "rgb": [0, 255, 255], "tol": 30}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.exportMedia", "params": {"path": "{OUT}/filmcraft_smoke_tail.mp4", "format": "h264", "startSeconds": 1.0, "endSeconds": 2.0, "wait": true}}, "timeout": 120, "expect": [
+   {"json": "/result/frames", "eq": 24},
+   {"media": "{OUT}/filmcraft_smoke_tail.mp4", "codec": "h264", "frames": 24},
+   {"run": ["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name,sample_rate,channels", "-of", "csv=p=0", "{OUT}/filmcraft_smoke_tail.mp4"], "stdout_contains": "aac,48000,2", "exit": 0},
+   {"run": ["ffmpeg", "-v", "error", "-y", "-i", "{OUT}/filmcraft_smoke_tail.mp4", "-frames:v", "1", "{OUT}/filmcraft_smoke_f24.png"], "exit": 0},
+   {"pixel": "{OUT}/filmcraft_smoke_f24.png", "x": 580, "y": 200, "rgb": [255, 0, 0], "tol": 30},
+   {"pixel": "{OUT}/filmcraft_smoke_f24.png", "x": 300, "y": 150, "rgb": [255, 128, 0], "tol": 30}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.exportMedia", "params": {"path": "{OUT}/filmcraft_endonly.mp4", "format": "h264", "endSeconds": 1.0, "wait": true}}, "expect_error": "custom range: need start"},
+ {"tool": "command_run", "args": {"id": "file.exportFcpxml", "params": {"path": "{OUT}/filmcraft_smoke.fcpxml"}}, "expect": [
+   {"text_contains": "is not supported in FCPXML: it is left out"},
+   {"file_text": "{OUT}/filmcraft_smoke.fcpxml", "contains": "<fcpxml"},
+   {"file_text": "{OUT}/filmcraft_smoke.fcpxml", "contains": "SMOKE_MARKER"}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.exportFcp7Xml", "params": {"path": "{OUT}/filmcraft_smoke.xml"}}, "expect": [
+   {"text_contains": "has no Final Cut Pro 7 XML equivalent"},
+   {"file_text": "{OUT}/filmcraft_smoke.xml", "contains": "SMOKE_MARKER"}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.exportOtio", "params": {"path": "{OUT}/filmcraft_smoke.otio"}}, "expect": [
+   {"text_contains": "is read back as offline media"},
+   {"file_text": "{OUT}/filmcraft_smoke.otio", "contains": "SMOKE_MARKER"}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.exportAaf", "params": {"path": "{OUT}/filmcraft_smoke.aaf"}}, "expect": [
+   {"text_contains": "is not exported (left as a gap)"},
+   {"file": "{OUT}/filmcraft_smoke.aaf", "min_bytes": 10000}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.exportEdl", "params": {"path": "{OUT}/filmcraft_smoke.edl"}}, "expect": [
+   {"text_contains": "EDLs hold one video track"},
+   {"text_contains": "cannot be represented in an EDL"},
+   {"file_text": "{OUT}/filmcraft_smoke.edl", "contains": "FCM:"}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.exportFrame", "params": {"path": "{OUT}/filmcraft_frame36.png", "format": "png", "time": 381024000000}}, "expect": [
+   {"json": "/width", "eq": 640},
+   {"json": "/height", "eq": 360},
+   {"media": "{OUT}/filmcraft_frame36.png", "width": 640, "height": 360},
+   {"run": ["ffprobe", "-v", "error", "-show_entries", "stream=pix_fmt", "-of", "csv=p=0", "{OUT}/filmcraft_frame36.png"], "stdout_contains": "rgba", "exit": 0},
+   {"pixel": "{OUT}/filmcraft_frame36.png", "x": 300, "y": 150, "rgb": [255, 128, 0], "tol": 12},
+   {"pixel": "{OUT}/filmcraft_frame36.png", "x": 580, "y": 200, "rgb": [255, 0, 0], "tol": 12}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.exportFrame", "params": {"path": "{OUT}/filmcraft_frame_secs.png", "format": "png", "seconds": 1.5}}, "expect": [
+   {"json": "/time", "eq": 0}
+  ]},
+ {"tool": "render_frame", "args": {"frame": 36}, "expect_error": "unknown argument"},
+ {"tool": "command_run", "args": {"id": "markers.markIn", "params": {"seconds": 0.5}}},
+ {"tool": "command_run", "args": {"id": "markers.markOut", "params": {"seconds": 1.0}}},
+ {"tool": "sequence_inspect", "args": {}, "expect": [
+   {"json": "/in", "eq": 127008000000},
+   {"json": "/out", "eq": 254016000000}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.exportMedia", "params": {"path": "{OUT}/filmcraft_inout.mp4", "format": "h264", "wait": true}}, "timeout": 120, "expect": [
+   {"json": "/result/frames", "eq": 13},
+   {"media": "{OUT}/filmcraft_inout.mp4", "codec": "h264", "frames": 13},
+   {"run": ["ffmpeg", "-v", "error", "-y", "-i", "{OUT}/filmcraft_inout.mp4", "-frames:v", "1", "{OUT}/filmcraft_inout_f12.png"], "exit": 0},
+   {"pixel": "{OUT}/filmcraft_inout_f12.png", "x": 580, "y": 200, "rgb": [0, 255, 255], "tol": 30}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.exportMedia", "params": {"path": "{OUT}/filmcraft_entire.mp4", "format": "h264", "range": "entire", "wait": true}}, "timeout": 120, "expect": [
+   {"json": "/result/frames", "eq": 48},
+   {"media": "{OUT}/filmcraft_entire.mp4", "codec": "h264", "frames": 48}
+  ]},
+ {"tool": "command_run", "args": {"id": "markers.clearInOut", "params": {}}},
+ {"tool": "command_run", "args": {"id": "file.exportMedia", "params": {"path": "{OUT}/filmcraft_mix.wav", "format": "wav", "wait": true}}, "timeout": 120, "expect": [
+   {"json": "/result/frames", "eq": 96000},
+   {"run": ["ffprobe", "-v", "error", "-show_entries", "stream=codec_name,sample_rate,channels", "-of", "csv=p=0", "{OUT}/filmcraft_mix.wav"], "stdout_contains": "pcm_s16le,48000,2", "exit": 0}
+  ]},
+ {"tool": "command_run", "args": {"id": "timeline.razor", "params": {"secs": 1.5}}, "expect": [
+   {"json": "/cuts", "eq": 0}
+  ]},
+ {"tool": "command_run", "args": {"id": "edit.undo", "params": {}}, "expect": [
+   {"json": "/undone", "eq": "Razor"}
+  ]},
+ {"tool": "command_run", "args": {"id": "history.list", "params": {}}, "expect": [
+   {"json": "/redo", "eq": ["Razor"]},
+   {"json": "/undo", "contains": "Clear In and Out"}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.import", "params": {"paths": ["{OUT}/filmcraft_smoke.fcpxml"]}}, "capture": {"seq3": "/sequences/0"}, "expect": [
+   {"json": "/errors", "len": 0},
+   {"json": "/sequences", "len": 1},
+   {"json": "/documents/0/format", "eq": "FCPXML"},
+   {"json": "/documents/0/offlineMedia", "len": 0}
+  ]},
+ {"tool": "sequence_inspect", "args": {}, "expect": [
+   {"json": "/id", "eq": "${seq3}"},
+   {"json": "/durationFrames", "eq": 48},
+   {"json": "/video", "len": 1},
+   {"json": "/video/0/items", "len": 2},
+   {"json": "/markers/0/name", "eq": "SMOKE_MARKER"}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.import", "params": {"paths": ["{OUT}/filmcraft_smoke.aaf"]}}, "expect": [
+   {"json": "/documents/0/format", "eq": "AAF"},
+   {"json": "/sequences", "len": 1},
+   {"file": "{OUT}/filmcraft_smoke Media/test_clip.mp4.wav", "min_bytes": 100000}
+  ]},
+ {"restart": true},
+ {"tool": "project_inspect", "args": {}, "expect": [
+   {"json": "/activeSequence", "eq": null},
+   {"json": "/path", "eq": null}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.open", "params": {"path": "{OUT}/filmcraft_smoke.fcproj"}}, "expect": [
+   {"json": "/missingMedia", "eq": 0}
+  ]},
+ {"tool": "sequence_inspect", "args": {}, "capture": {"gfx2": "/video/1/items/0/clip"}, "expect": [
+   {"json": "/video", "len": 2},
+   {"json": "/in", "eq": null},
+   {"json": "/video/0/items", "len": 2},
+   {"json": "/video/0/items/1/startFrame", "eq": 24},
+   {"json": "/video/0/items/0/effects", "len": 3},
+   {"json": "/video/0/items/0/effects/0/effect", "eq": "motion"},
+   {"json": "/video/0/items/1/effects", "len": 4},
+   {"json": "/video/0/items/1/effects/3/effect", "eq": "invert"},
+   {"json": "/markers/0/name", "eq": "SMOKE_MARKER"},
+   {"json": "/markers/0/start", "eq": 317520000000}
+  ]},
+ {"tool": "command_run", "args": {"id": "graphics.list", "params": {"clip": "${gfx2}"}}, "expect": [
+   {"json": "/layers/0/kind", "eq": "Rectangle"},
+   {"json": "/layers/0/position", "eq": [320, 180]}
+  ]},
+ {"tool": "render_frame", "args": {"seconds": 1.5}, "expect": [
+   {"pixel": "$img", "x": 300, "y": 150, "rgb": [255, 128, 0], "tol": 12},
+   {"pixel": "$img", "x": 580, "y": 200, "rgb": [255, 0, 0], "tol": 12},
+   {"run": ["{CLI}", "--project", "{OUT}/filmcraft_smoke.fcproj", "--compact", "inspect", "sequence"], "stdout_contains": "SMOKE_MARKER", "exit": 0}
+  ]},
+ {"restart": true},
+ {"tool": "media_import", "args": {"paths": ["{IN}/test_card.png"]}, "capture": {"still": "/items/0"}, "expect": [
+   {"json": "/items", "len": 1}
+  ]},
+ {"tool": "command_run", "args": {"id": "file.newSequenceFromClip", "params": {"items": ["${still}"]}}, "capture": {"card": "/clips/0"}, "expect": [
+   {"json": "/clips", "len": 1}
+  ]},
+ {"tool": "sequence_inspect", "args": {}, "expect": [
+   {"json": "/durationFrames", "eq": 150},
+   {"json": "/settings/frame_rate", "eq": {"den": 1001, "num": 30000}},
+   {"json": "/settings/width", "eq": 1280}
+  ]},
+ {"tool": "render_frame", "args": {"seconds": 0.5}, "expect": [
+   {"media": "$img", "width": 960, "height": 540},
+   {"pixel": "$img", "x": 480, "y": 165, "rgb": [240, 200, 40], "tol": 12},
+   {"pixel": "$img", "x": 112, "y": 440, "rgb": [40, 60, 90], "tol": 12}
+  ]},
+ {"tool": "render_preview", "args": {}, "expect": [
+   {"media": "$img", "width": 960, "height": 540},
+   {"pixel": "$img", "x": 480, "y": 165, "rgb": [240, 200, 40], "tol": 12},
+   {"pixel": "$img", "x": 112, "y": 440, "rgb": [40, 60, 90], "tol": 12}
+  ]},
+ {"tool": "render_frame", "args": {"seconds": 0.5, "max_side": 320}, "expect": [
+   {"media": "$img", "width": 320, "height": 180}
+  ]},
+ {"tool": "command_run", "args": {"id": "effects.apply", "params": {"clips": ["${card}"], "effect": "gaussian_blur"}}, "expect": [
+   {"json": "/applied/0/effect", "eq": "gaussian_blur"}
+  ]},
+ {"tool": "render_frame", "args": {"seconds": 0.5, "max_side": 0}, "expect": [
+   {"media": "$img", "width": 1280, "height": 720},
+   {"pixel": "$img", "x": 150, "y": 360, "rgb": [40, 60, 90], "tol": 8}
+  ]},
+ {"tool": "command_run", "args": {"id": "effects.setParam", "params": {"clip": "${card}", "effect": "Gaussian Blur", "param": "blurriness", "value": 40}}, "expect_error": "no such effect on clip"},
+ {"tool": "command_run", "args": {"id": "effects.setParam", "params": {"clip": "${card}", "effect": "gaussian_blur", "param": "blurriness", "value": 40}}, "expect": [
+   {"json": "/value", "eq": 40}
+  ]},
+ {"tool": "render_frame", "args": {"seconds": 0.5, "max_side": 0}, "expect": [
+   {"pixel": "$img", "x": 150, "y": 360, "rgb": [28, 160, 97], "tol": 20}
+  ]},
+ {"tool": "command_run", "args": {"id": "playhead.set", "params": {"seconds": 0.5}}, "expect": [
+   {"json": "/time", "eq": 118659340800}
+  ]},
+ {"tool": "command_run", "args": {"id": "markers.add", "params": {"name": "HUMAN", "frame": 15}}},
+ {"tool": "command_run", "args": {"id": "markers.add", "params": {"name": "AGENT", "frame": 15}}},
+ {"tool": "command_run", "args": {"id": "markers.add", "params": {"name": "KEEP", "frame": 30}}},
+ {"tool": "command_run", "args": {"id": "playhead.set", "params": {"frame": 15}}},
+ {"tool": "command_run", "args": {"id": "markers.clearCurrent", "params": {}}},
+ {"tool": "sequence_inspect", "args": {}, "expect": [
+   {"json": "/markers", "len": 1},
+   {"json": "/markers/0/name", "eq": "KEEP"}
+  ]},
+ {"tool": "command_run", "args": {"id": "markers.add", "params": {"seconds": 1.5, "name": "UNDONE"}}, "capture": {"m1": "/marker"}},
+ {"tool": "command_run", "args": {"id": "edit.undo", "params": {}}, "expect": [
+   {"json": "/undone", "eq": "Add Marker"}
+  ]},
+ {"tool": "command_run", "args": {"id": "markers.add", "params": {"seconds": 1.75, "name": "REUSED"}}, "expect": [
+   {"json": "/marker", "eq": "${m1}"}
+  ]},
+ {"tool": "project_inspect", "args": {}, "capture": {"rev": "/revision"}},
+ {"tool": "command_run", "args": {"id": "file.saveCopy", "params": {"path": "{OUT}/filmcraft_card_copy.fcproj"}}, "expect": [
+   {"file_text": "{OUT}/filmcraft_card_copy.fcproj", "contains": "\"name\":\"REUSED\""}
+  ]},
+ {"tool": "project_inspect", "args": {}, "expect": [
+   {"json": "/revision", "eq": "${rev}"},
+   {"json": "/dirty", "eq": true},
+   {"json": "/path", "eq": null}
+  ]},
+ {"tool": "command_batch", "args": {"steps": [{"id": "markers.add", "params": {"seconds": 0.25, "name": "B1"}}, {"id": "effects.apply", "params": {"effect": "invert"}}, {"id": "markers.add", "params": {"seconds": 0.75, "name": "B3"}}]}, "expect_error": "select clips first", "expect": [
+   {"text_contains": "\"completed\":1"}
+  ]},
+ {"tool": "command_batch", "args": {"steps": [{"id": "markers.add", "params": {"seconds": 0.3, "name": "C1"}}, {"id": "effects.apply", "params": {"effect": "invert"}}, {"id": "markers.add", "params": {"seconds": 0.8, "name": "C3"}}], "stop_on_error": false}, "expect_error": "select clips first", "expect": [
+   {"text_contains": "\"completed\":2"}
+  ]}
 ]

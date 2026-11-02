@@ -1,0 +1,594 @@
+[
+ {
+  "note": "setup: {OUT}_outside (card.png, lime.png), {OUT}/../dc_escape_src.png, junction {OUT}/jx -> {OUT}_outside. Passes with read {IN} + write {OUT} (repo runner, cwd {OUT}/..) and with read {IN}+{OUT} + write {OUT} (plugin, cwd {OUT}). Needs Windows, python and ffmpeg on PATH.",
+  "tool": "new_document",
+  "args": {
+   "width": 200,
+   "height": 200
+  },
+  "expect": [
+   {
+    "json": "/index",
+    "gte": 1
+   },
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys,shutil,subprocess\no,i=sys.argv[1],sys.argv[2]; x=o+'_outside'; up=os.path.dirname(o); j=o+'/jx'\nif os.path.lexists(j): os.rmdir(j)  # an old junction: remove the link, never what it points to\nif os.path.isdir(x): shutil.rmtree(x)\nos.makedirs(x); shutil.copyfile(i+'/test_card.png',x+'/card.png')\nsubprocess.run(['ffmpeg','-v','error','-y','-f','lavfi','-i','color=c=0x00ff00:s=128x72','-frames:v','1',x+'/lime.png'],check=True)\nshutil.copyfile(i+'/test_card.png',up+'/dc_escape_src.png')\nfor p in (up+'/dc_escape.png',up+'/dc_escape_rel.png',os.path.dirname(up)+'/dc_escape_rel.png'):\n    if os.path.exists(p): os.remove(p)\nsubprocess.run(['cmd','/c','mklink','/J',j.replace('/','\\\\'),x.replace('/','\\\\')],check=True,capture_output=True)\nprint('setup ok', sorted(os.listdir(x)), os.path.isfile(j+'/card.png'))",
+     "{OUT}",
+     "{IN}"
+    ],
+    "exit": 0,
+    "stdout_contains": "setup ok ['card.png', 'lime.png'] True"
+   }
+  ]
+ },
+ {
+  "tool": "export_png",
+  "args": {
+   "path": "{OUT}/sb_ok.png",
+   "scale": 1
+  },
+  "expect": [
+   {
+    "json": "/width",
+    "eq": 200
+   },
+   {
+    "media": "{OUT}/sb_ok.png",
+    "width": 200,
+    "height": 200,
+    "codec": "png"
+   }
+  ]
+ },
+ {
+  "tool": "place_image",
+  "args": {
+   "path": "{IN}/test_card.png",
+   "x": 0,
+   "y": 0,
+   "width": 200
+  },
+  "capture": {
+   "img": "/id"
+  }
+ },
+ {
+  "tool": "render_page",
+  "args": {
+   "path": "{OUT}/sb_read_in.png",
+   "scale": 1
+  },
+  "expect": [
+   {
+    "pixel": "$img",
+    "x": 100,
+    "y": 34,
+    "rgb": [
+     240,
+     200,
+     40
+    ],
+    "tol": 10
+   }
+  ]
+ },
+ {
+  "tool": "export_png",
+  "args": {
+   "path": "{OUT}/sub/../sb_inner_dotdot.png",
+   "scale": 1
+  },
+  "expect": [
+   {
+    "file": "{OUT}/sb_inner_dotdot.png",
+    "min_bytes": 100
+   }
+  ]
+ },
+ {
+  "note": "then build a copy in {IN} whose image link points outside the roots (opened after the restart below)",
+  "tool": "save_document",
+  "args": {
+   "path": "{OUT}/sb.designcraft"
+  },
+  "expect": [
+   {
+    "file": "{OUT}/sb.designcraft",
+    "min_bytes": 5000
+   },
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import json,sys,zipfile as Z\ns,d,t=sys.argv[1:4]\nzi=Z.ZipFile(s); zo=Z.ZipFile(d,'w')\nfor i in zi.infolist():\n    b=zi.read(i.filename)\n    if i.filename=='document.json':\n        j=json.loads(b)\n        for a in j['assets'].values(): a['link']=t\n        b=json.dumps(j).encode()\n    zo.writestr(i,b)\nzo.close(); print('crafted', d)",
+     "{OUT}/sb.designcraft",
+     "{IN}/sb_crafted.designcraft",
+     "{OUT}_outside/lime.png"
+    ],
+    "exit": 0,
+    "stdout_contains": "crafted"
+   }
+  ]
+ },
+ {
+  "tool": "place_image",
+  "args": {
+   "path": "{OUT}_outside/card.png",
+   "x": 0,
+   "y": 0
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "open_document",
+  "args": {
+   "path": "C:/Windows/win.ini"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "export_png",
+  "args": {
+   "path": "{OUT}_outside/w.png",
+   "scale": 1
+  },
+  "expect_error": "outside the write root",
+  "expect": [
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys; sys.exit(any(os.path.exists(p) for p in sys.argv[1:]))",
+     "{OUT}_outside/w.png"
+    ],
+    "exit": 0
+   }
+  ]
+ },
+ {
+  "tool": "save_document",
+  "args": {
+   "path": "{OUT}_outside/sv.designcraft"
+  },
+  "expect_error": "outside the write root",
+  "expect": [
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys; sys.exit(any(os.path.exists(p) for p in sys.argv[1:]))",
+     "{OUT}_outside/sv.designcraft"
+    ],
+    "exit": 0
+   }
+  ]
+ },
+ {
+  "tool": "render_page",
+  "args": {
+   "path": "{OUT}_outside/r.png"
+  },
+  "expect_error": "outside the write root",
+  "expect": [
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys; sys.exit(any(os.path.exists(p) for p in sys.argv[1:]))",
+     "{OUT}_outside/r.png"
+    ],
+    "exit": 0
+   }
+  ]
+ },
+ {
+  "tool": "export_png",
+  "args": {
+   "path": "{OUT}/../dc_escape.png",
+   "scale": 1
+  },
+  "expect_error": "outside the write root",
+  "expect": [
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys; sys.exit(any(os.path.exists(p) for p in sys.argv[1:]))",
+     "{OUT}/../dc_escape.png"
+    ],
+    "exit": 0
+   }
+  ]
+ },
+ {
+  "tool": "place_image",
+  "args": {
+   "path": "{OUT}/../dc_escape_src.png"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "export_png",
+  "args": {
+   "path": "../dc_escape_rel.png",
+   "scale": 1
+  },
+  "expect_error": "outside the write root",
+  "expect": [
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys; sys.exit(any(os.path.exists(p) for p in sys.argv[1:]))",
+     "{OUT}/../dc_escape_rel.png",
+     "{OUT}/../../dc_escape_rel.png"
+    ],
+    "exit": 0
+   }
+  ]
+ },
+ {
+  "note": "with cwd {OUT} this names the existing {OUT}/../dc_escape_src.png; refused before any read either way",
+  "tool": "place_image",
+  "args": {
+   "path": "../dc_escape_src.png"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "export_png",
+  "args": {
+   "path": "{OUT}/jx/j.png",
+   "scale": 1
+  },
+  "expect_error": "outside the write root",
+  "expect": [
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys; sys.exit(any(os.path.exists(p) for p in sys.argv[1:]))",
+     "{OUT}_outside/j.png"
+    ],
+    "exit": 0
+   }
+  ]
+ },
+ {
+  "tool": "place_image",
+  "args": {
+   "path": "{OUT}/jx/card.png"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "note": "none of the refused reads added an item",
+  "tool": "inspect_document",
+  "args": {},
+  "expect": [
+   {
+    "json": "/spreads/0/items",
+    "len": 1
+   }
+  ]
+ },
+ {
+  "tool": "export_png",
+  "args": {
+   "path": "\\\\127.0.0.1\\nosuchshare\\x.png",
+   "scale": 1
+  },
+  "expect_error": "automation path rejected: cannot resolve"
+ },
+ {
+  "tool": "place_image",
+  "args": {
+   "path": "\\\\127.0.0.1\\nosuchshare\\x.png"
+  },
+  "expect_error": "automation path rejected: cannot resolve"
+ },
+ {
+  "note": "OS behaviour: os error 87; the temp file .a.png is left behind, empty",
+  "tool": "export_png",
+  "args": {
+   "path": "{OUT}/a.png:x",
+   "scale": 1
+  },
+  "expect_error": "cannot save",
+  "expect": [
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys; sys.exit(any(os.path.exists(p) for p in sys.argv[1:]))",
+     "{OUT}/a.png"
+    ],
+    "exit": 0
+   },
+   {
+    "file": "{OUT}/.a.png",
+    "min_bytes": 0
+   }
+  ]
+ },
+ {
+  "note": "OS behaviour: os error 2",
+  "tool": "place_image",
+  "args": {
+   "path": "{IN}/test_card.png:x"
+  },
+  "expect_error": "os error 2"
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.exportPdf",
+   "params": {
+    "path": "{OUT}_outside/e.pdf"
+   }
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.open",
+   "params": {
+    "path": "{OUT}_outside/card.png"
+   }
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.place",
+   "params": {
+    "path": "{OUT}_outside/card.png",
+    "x": 0,
+    "y": 0
+   }
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "batch",
+  "args": {
+   "commands": [
+    {
+     "command": "file.saveACopy",
+     "params": {
+      "path": "{OUT}_outside/b.designcraft"
+     }
+    }
+   ]
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "batch",
+  "args": {
+   "script": "file.exportIdml {\"path\": \"{OUT}_outside/s.idml\"}"
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "script.run",
+   "params": {
+    "text": "file.exportPdf {\"path\": \"{OUT}_outside/sr.pdf\"}"
+   }
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "links.copyTo",
+   "params": {
+    "dir": "{OUT}_outside/copies"
+   }
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "data.source.select",
+   "params": {
+    "path": "{OUT}_outside/card.png",
+    "name": "x"
+   }
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "inspect_document",
+  "args": {},
+  "expect": [
+   {
+    "json": "/spreads/0/items",
+    "len": 1
+   }
+  ]
+ },
+ {
+  "tool": "export_png",
+  "args": {
+   "path": "{OUT}/NUL.png",
+   "scale": 1
+  },
+  "timeout": 10,
+  "expect_error": "reserved device names"
+ },
+ {
+  "tool": "place_image",
+  "args": {
+   "path": "{OUT}/AUX.png"
+  },
+  "timeout": 10,
+  "expect_error": "reserved device names"
+ },
+ {
+  "tool": "export_png",
+  "args": {
+   "path": "CON",
+   "scale": 1
+  },
+  "timeout": 10,
+  "expect_error": "reserved device names"
+ },
+ {
+  "tool": "open_document",
+  "args": {
+   "path": "CON"
+  },
+  "timeout": 10,
+  "expect_error": "reserved device names"
+ },
+ {
+  "restart": true
+ },
+ {
+  "tool": "open_document",
+  "args": {
+   "path": "{IN}/sb_crafted.designcraft"
+  },
+  "expect": [
+   {
+    "json": "/warnings",
+    "len": 0
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "links.list",
+   "params": {}
+  },
+  "capture": {
+   "asset": "/0/asset"
+  },
+  "expect": [
+   {
+    "json": "/0/path",
+    "contains": "lime.png"
+   },
+   {
+    "json": "/0/status",
+    "eq": "missing"
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "links.update",
+   "params": {}
+  },
+  "expect": [
+   {
+    "json": "/updated",
+    "eq": 0
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "links.relink",
+   "params": {
+    "asset": "${asset}",
+    "path": "{OUT}_outside/lime.png"
+   }
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "note": "the embedded copy is drawn (not lime); nothing was written outside {OUT}",
+  "tool": "render_page",
+  "args": {
+   "path": "{OUT}/sb_crafted.png",
+   "scale": 1
+  },
+  "expect": [
+   {
+    "pixel": "$img",
+    "x": 100,
+    "y": 34,
+    "rgb": [
+     240,
+     200,
+     40
+    ],
+    "tol": 10
+   },
+   {
+    "pixel": "$img",
+    "x": 20,
+    "y": 20,
+    "rgb": [
+     40,
+     60,
+     90
+    ],
+    "tol": 10
+   },
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys; s=sorted(os.listdir(sys.argv[1])); print(s); sys.exit(s!=['card.png','lime.png'])",
+     "{OUT}_outside"
+    ],
+    "exit": 0
+   },
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys; sys.exit(any(os.path.exists(p) for p in sys.argv[1:]))",
+     "{OUT}/../dc_escape.png",
+     "{OUT}/../dc_escape_rel.png",
+     "{OUT}/../../dc_escape_rel.png"
+    ],
+    "exit": 0
+   }
+  ]
+ },
+ {
+  "note": "cleanup: remove the junction and the files this battery made outside {OUT}; {OUT}_outside stays as evidence",
+  "tool": "inspect_document",
+  "args": {},
+  "expect": [
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys\no,i=sys.argv[1],sys.argv[2]; x=o+'_outside'; up=os.path.dirname(o); j=o+'/jx'\nif os.path.lexists(j): os.rmdir(j)  # removes the junction itself, never the folder it points to\nfor p in (i+'/sb_crafted.designcraft', up+'/dc_escape_src.png'):\n    if os.path.exists(p): os.remove(p)\nprint('cleanup ok', os.path.lexists(j), sorted(os.listdir(x)), os.path.exists(i+'/sb_crafted.designcraft'))",
+     "{OUT}",
+     "{IN}"
+    ],
+    "exit": 0,
+    "stdout_contains": "cleanup ok False ['card.png', 'lime.png'] False"
+   }
+  ]
+ }
+]

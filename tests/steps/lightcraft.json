@@ -1,38 +1,76 @@
 [
- {
-  "tool": "import",
-  "args": {
-   "paths": [
-    "{IN}/test_card.jpg"
-   ]
-  }
- },
- {
-  "tool": "query_photos",
-  "args": {
-   "limit": 5
-  }
- },
- {
-  "tool": "set_develop",
-  "args": {
-   "values": {
-    "light.exposure": 0.7,
-    "light.contrast": 25
-   }
-  }
- },
- {
-  "tool": "render_photo",
-  "args": {
-   "size": 640
-  }
- },
- {
-  "tool": "export",
-  "args": {
-   "path": "{OUT}/lightcraft_out.jpg",
-   "longEdge": 0
-  }
- }
+ {"tool": "doc_inspect", "args": {},
+  "expect": [{"json": "/stats/photos", "eq": 0}]},
+
+ {"tool": "import", "args": {"paths": ["{IN}/test_card.png"], "mode": "copy", "destination": "{OUT}/lc_orig", "organize": "flat"},
+  "capture": {"pid": "/imported/0"},
+  "expect": [{"json": "/imported", "len": 1}, {"json": "/failed", "len": 0}, {"json": "/sidecars", "eq": 0}]},
+
+ {"tool": "run_command", "args": {"command": "photo.inspect", "params": {"id": "${pid}"}},
+  "capture": {"src": "/source/path"},
+  "expect": [{"json": "/source/path", "contains": "lc_orig"}, {"json": "/width", "eq": 1280}, {"json": "/height", "eq": 720}]},
+
+ {"tool": "set_develop", "args": {"id": "${pid}", "values": {"color.saturation": -100, "light.exposure": 1.0}},
+  "expect": [{"json": "/controls/0/id", "eq": "light.exposure"}, {"json": "/controls/0/value", "eq": 1.0},
+             {"json": "/controls/1/id", "eq": "color.saturation"}, {"json": "/controls/1/value", "eq": -100.0}]},
+
+ {"tool": "crop", "args": {"id": "${pid}", "rect": [0, 0.25, 0.5, 0.75]},
+  "expect": [{"text_contains": "ok"}]},
+
+ {"tool": "run_command", "args": {"command": "photo.rate", "params": {"ids": ["${pid}"], "rating": 4}},
+  "expect": [{"json": "/changed", "eq": 1}]},
+
+ {"tool": "get_develop", "args": {"id": "${pid}"},
+  "expect": [{"json": "/color/saturation", "eq": -100.0}, {"json": "/light/exposure", "eq": 1.0},
+             {"json": "/crop/geometry/rect/x1", "eq": 0.5}, {"json": "/crop/geometry/rect/y0", "eq": 0.25}]},
+
+ {"tool": "render_photo", "args": {"id": "${pid}", "size": 640, "path": "{OUT}/lc_render.png"},
+  "expect": [{"json": "/width", "eq": 640}, {"json": "/height", "eq": 360},
+             {"pixel": "$img", "x": 70, "y": 160, "rgb": [230, 230, 230], "tol": 10},
+             {"pixel": "$img", "x": 320, "y": 50, "rgb": [191, 191, 191], "tol": 10},
+             {"pixel": "$img", "x": 150, "y": 100, "rgb": [84, 84, 84], "tol": 10},
+             {"media": "{OUT}/lc_render.png", "width": 640, "height": 360, "codec": "png"}]},
+
+ {"tool": "run_command", "args": {"command": "photo.saveMetadataToFile", "params": {"ids": ["${pid}"]}},
+  "capture": {"xmp": "/written/0"},
+  "expect": [{"json": "/written", "len": 1}, {"json": "/failed", "len": 0},
+             {"file_text": "${xmp}", "contains": "<xmp:Rating>4</xmp:Rating>"},
+             {"file_text": "${xmp}", "contains": "\"saturation\":-100.0"},
+             {"file_text": "${xmp}", "contains": "\"x0\":0.0,\"y0\":0.25,\"x1\":0.5,\"y1\":0.75"},
+             {"run": ["{CLI}", "render", "${src}", "-o", "{OUT}/lc_cli_render.png"], "stdout_contains": "(640", "exit": 0},
+             {"pixel": "{OUT}/lc_cli_render.png", "x": 70, "y": 160, "rgb": [230, 230, 230], "tol": 10}]},
+
+ {"tool": "export", "args": {"id": "${pid}", "path": "{OUT}/lc_export.jpg", "longEdge": 0},
+  "expect": [{"json": "/width", "eq": 640}, {"json": "/height", "eq": 360},
+             {"media": "{OUT}/lc_export.jpg", "width": 640, "height": 360, "codec": "mjpeg"},
+             {"pixel": "{OUT}/lc_export.jpg", "x": 70, "y": 160, "rgb": [230, 230, 230], "tol": 12},
+             {"pixel": "{OUT}/lc_export.jpg", "x": 320, "y": 50, "rgb": [191, 191, 191], "tol": 12},
+             {"file_text": "{OUT}/lc_export.jpg", "contains": "<xmp:Rating>4</xmp:Rating>"}]},
+
+ {"tool": "export", "args": {"id": "${pid}", "path": "{OUT}/lc_export.png", "longEdge": 0},
+  "expect": [{"media": "{OUT}/lc_export.png", "width": 640, "height": 360, "codec": "png"},
+             {"pixel": "{OUT}/lc_export.png", "x": 70, "y": 160, "rgb": [230, 230, 230], "tol": 10},
+             {"pixel": "{OUT}/lc_export.png", "x": 600, "y": 40, "rgb": [255, 255, 255], "tol": 6},
+             {"pixel": "{OUT}/lc_export.png", "x": 550, "y": 250, "rgb": [179, 179, 179], "tol": 10}]},
+
+ {"restart": true},
+
+ {"tool": "doc_inspect", "args": {},
+  "expect": [{"json": "/stats/photos", "eq": 0}]},
+
+ {"tool": "import", "args": {"paths": ["${src}"]},
+  "capture": {"rid": "/imported/0"},
+  "expect": [{"json": "/imported", "len": 1}, {"json": "/sidecars", "eq": 1}]},
+
+ {"tool": "query_photos", "args": {},
+  "expect": [{"json": "/total", "eq": 1}, {"json": "/photos/0/rating", "eq": 4}, {"json": "/photos/0/edited", "eq": true}]},
+
+ {"tool": "get_develop", "args": {"id": "${rid}"},
+  "expect": [{"json": "/color/saturation", "eq": -100.0}, {"json": "/light/exposure", "eq": 1.0},
+             {"json": "/crop/geometry/rect/x1", "eq": 0.5}, {"json": "/crop/geometry/rect/y1", "eq": 0.75}]},
+
+ {"tool": "render_photo", "args": {"id": "${rid}", "size": 640},
+  "expect": [{"json": "/width", "eq": 640}, {"json": "/height", "eq": 360},
+             {"pixel": "$img", "x": 70, "y": 160, "rgb": [230, 230, 230], "tol": 10},
+             {"pixel": "$img", "x": 320, "y": 50, "rgb": [191, 191, 191], "tol": 10}]}
 ]

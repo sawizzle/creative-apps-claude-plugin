@@ -1,0 +1,987 @@
+[
+ {
+  "tool": "new_drawing",
+  "args": {
+   "metric": true
+  },
+  "expect": [
+   {
+    "json": "/index",
+    "gte": 0
+   },
+   {
+    "json": "/title",
+    "exists": true
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "getvar",
+   "params": {
+    "name": "MEASUREMENT"
+   }
+  },
+  "expect": [
+   {
+    "json": "/value",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "layer.new",
+   "params": {
+    "name": "Outline",
+    "color": "red",
+    "current": true
+   }
+  }
+ },
+ {
+  "tool": "command_line",
+  "args": {
+   "text": "rectang 0,0 100,60"
+  },
+  "expect": [
+   {
+    "json": "/running",
+    "eq": null
+   },
+   {
+    "json": "/error",
+    "exists": false
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "circle",
+   "params": {
+    "center": [
+     50,
+     30
+    ],
+    "radius": 20
+   }
+  },
+  "capture": {
+   "circ": "/handle"
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "hatch",
+   "params": {
+    "handles": [
+     "${circ}"
+    ],
+    "pattern": "SOLID"
+   }
+  },
+  "capture": {
+   "hat": "/handle"
+  },
+  "expect": [
+   {
+    "json": "/handles",
+    "len": 1
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "move",
+   "params": {
+    "handles": [
+     "${circ}"
+    ],
+    "delta": [
+     10,
+     0
+    ]
+   }
+  },
+  "expect": [
+   {
+    "json": "/moved",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "properties.set",
+   "params": {
+    "handles": [
+     "${hat}"
+    ],
+    "color": "green"
+   }
+  },
+  "expect": [
+   {
+    "json": "/changed",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "layer.new",
+   "params": {
+    "name": "Notes",
+    "color": "blue",
+    "current": true
+   }
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "style",
+   "params": {
+    "name": "Title",
+    "font": "Arial",
+    "current": true
+   }
+  },
+  "expect": [
+   {
+    "json": "/current",
+    "eq": "Title"
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "text",
+   "params": {
+    "at": [
+     10,
+     70
+    ],
+    "text": "MCP smoke test",
+    "height": 6
+   }
+  },
+  "capture": {
+   "txt": "/handle"
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "properties.set",
+   "params": {
+    "handles": [
+     "${txt}"
+    ],
+    "widthFactor": 1.2
+   }
+  },
+  "expect": [
+   {
+    "json": "/changed",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "dimlinear",
+   "params": {
+    "p1": [
+     0,
+     0
+    ],
+    "p2": [
+     100,
+     0
+    ],
+    "at": [
+     50,
+     -12
+    ]
+   }
+  },
+  "capture": {
+   "dim": "/handle"
+  }
+ },
+ {
+  "tool": "query_entities",
+  "args": {
+   "type": "Circle"
+  },
+  "expect": [
+   {
+    "json": "/count",
+    "eq": 1
+   },
+   {
+    "json": "/entities/0/geometry/center/x",
+    "approx": 60,
+    "tol": 1e-06
+   },
+   {
+    "json": "/entities/0/geometry/radius",
+    "approx": 20,
+    "tol": 1e-06
+   },
+   {
+    "json": "/entities/0/layer",
+    "eq": "Outline"
+   }
+  ]
+ },
+ {
+  "tool": "query_entities",
+  "args": {
+   "type": "Hatch"
+  },
+  "expect": [
+   {
+    "json": "/entities/0/handle",
+    "eq": "${hat}"
+   },
+   {
+    "json": "/entities/0/color",
+    "eq": "Green"
+   },
+   {
+    "json": "/entities/0/geometry/solid",
+    "eq": true
+   },
+   {
+    "json": "/entities/0/geometry/associative",
+    "eq": true
+   },
+   {
+    "json": "/entities/0/geometry/loops/0/vertices/0/p/x",
+    "approx": 40,
+    "tol": 1e-06
+   },
+   {
+    "json": "/entities/0/geometry/loops/0/vertices/1/p/x",
+    "approx": 80,
+    "tol": 1e-06
+   }
+  ]
+ },
+ {
+  "tool": "query_entities",
+  "args": {
+   "type": "Dimension"
+  },
+  "expect": [
+   {
+    "json": "/entities/0/handle",
+    "eq": "${dim}"
+   },
+   {
+    "json": "/entities/0/geometry/measurement",
+    "approx": 100,
+    "tol": 1e-06
+   },
+   {
+    "json": "/entities/0/geometry/block",
+    "eq": null
+   }
+  ]
+ },
+ {
+  "tool": "inspect_drawing",
+  "args": {
+   "entities": false
+  },
+  "expect": [
+   {
+    "json": "/counts",
+    "eq": {
+     "Circle": 1,
+     "Dimension": 1,
+     "Hatch": 1,
+     "Polyline": 1,
+     "Text": 1
+    }
+   },
+   {
+    "json": "/currentLayer",
+    "eq": "Notes"
+   },
+   {
+    "json": "/dirty",
+    "eq": true
+   },
+   {
+    "json": "/path",
+    "eq": null
+   }
+  ]
+ },
+ {
+  "tool": "render",
+  "args": {
+   "window": [
+    [
+     -20,
+     -20
+    ],
+    [
+     140,
+     80
+    ]
+   ],
+   "width": 800,
+   "height": 500
+  },
+  "expect": [
+   {
+    "media": "$img",
+    "width": 800,
+    "height": 500
+   },
+   {
+    "pixel": "$img",
+    "x": 400,
+    "y": 250,
+    "rgb": [
+     0,
+     255,
+     0
+    ],
+    "tol": 10
+   },
+   {
+    "pixel": "$img",
+    "x": 475,
+    "y": 250,
+    "rgb": [
+     0,
+     255,
+     0
+    ],
+    "tol": 10
+   },
+   {
+    "pixel": "$img",
+    "x": 275,
+    "y": 250,
+    "rgb": [
+     33,
+     40,
+     48
+    ],
+    "tol": 10
+   },
+   {
+    "pixel": "$img",
+    "x": 700,
+    "y": 450,
+    "rgb": [
+     33,
+     40,
+     48
+    ],
+    "tol": 10
+   }
+  ]
+ },
+ {
+  "tool": "save",
+  "args": {
+   "path": "{OUT}/cadcraft_smoke.dxf"
+  },
+  "expect": [
+   {
+    "json": "/version",
+    "eq": "2018"
+   },
+   {
+    "json": "/binary",
+    "eq": false
+   },
+   {
+    "file": "{OUT}/cadcraft_smoke.dxf",
+    "min_bytes": 10000
+   },
+   {
+    "file_text": "{OUT}/cadcraft_smoke.dxf",
+    "contains": "MCP smoke test"
+   },
+   {
+    "file_text": "{OUT}/cadcraft_smoke.dxf",
+    "contains": "Outline"
+   },
+   {
+    "file_text": "{OUT}/cadcraft_smoke.dxf",
+    "contains": "HATCH"
+   }
+  ]
+ },
+ {
+  "tool": "save",
+  "args": {
+   "path": "{OUT}/cadcraft_smoke.dwg"
+  },
+  "expect": [
+   {
+    "file": "{OUT}/cadcraft_smoke.dwg",
+    "min_bytes": 10000
+   },
+   {
+    "file_text": "{OUT}/cadcraft_smoke.dwg",
+    "contains": "AC1032"
+   },
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "--compact",
+     "{OUT}/cadcraft_smoke.dwg"
+    ],
+    "stdout_contains": "\"currentLayer\":\"Notes\""
+   }
+  ]
+ },
+ {
+  "tool": "save",
+  "args": {
+   "path": "{OUT}/cadcraft_smoke.png"
+  },
+  "expect": [
+   {
+    "json": "/bytes",
+    "gte": 10000
+   },
+   {
+    "media": "{OUT}/cadcraft_smoke.png",
+    "width": 2400,
+    "height": 1600
+   },
+   {
+    "pixel": "{OUT}/cadcraft_smoke.png",
+    "x": 1369,
+    "y": 824,
+    "rgb": [
+     0,
+     255,
+     0
+    ],
+    "tol": 10
+   },
+   {
+    "pixel": "{OUT}/cadcraft_smoke.png",
+    "x": 1623,
+    "y": 824,
+    "rgb": [
+     0,
+     255,
+     0
+    ],
+    "tol": 10
+   },
+   {
+    "pixel": "{OUT}/cadcraft_smoke.png",
+    "x": 945,
+    "y": 824,
+    "rgb": [
+     33,
+     40,
+     48
+    ],
+    "tol": 10
+   }
+  ]
+ },
+ {
+  "tool": "save",
+  "args": {
+   "path": "{OUT}/cadcraft_smoke.pdf"
+  },
+  "expect": [
+   {
+    "file": "{OUT}/cadcraft_smoke.pdf",
+    "min_bytes": 5000
+   },
+   {
+    "file_text": "{OUT}/cadcraft_smoke.pdf",
+    "contains": "MediaBox[0 0 841.8898 595.2756]"
+   },
+   {
+    "file_text": "{OUT}/cadcraft_smoke.pdf",
+    "contains": "/FontFile2"
+   }
+  ]
+ },
+ {
+  "tool": "save",
+  "args": {
+   "path": "{OUT}/cadcraft_smoke.svg"
+  },
+  "expect": [
+   {
+    "json": "/bytes",
+    "gte": 1000
+   },
+   {
+    "file_text": "{OUT}/cadcraft_smoke.svg",
+    "contains": "fill=\"white\""
+   },
+   {
+    "file_text": "{OUT}/cadcraft_smoke.svg",
+    "contains": "#00ff00"
+   }
+  ]
+ },
+ {
+  "tool": "inspect_drawing",
+  "args": {
+   "entities": false
+  },
+  "expect": [
+   {
+    "json": "/path",
+    "eq": "{OUT}/cadcraft_smoke.dwg"
+   },
+   {
+    "json": "/dirty",
+    "eq": false
+   }
+  ]
+ },
+ {
+  "restart": true
+ },
+ {
+  "tool": "inspect_drawing",
+  "args": {
+   "entities": false
+  },
+  "expect": [
+   {
+    "json": "/entityCount",
+    "eq": 0
+   },
+   {
+    "json": "/path",
+    "eq": null
+   }
+  ]
+ },
+ {
+  "tool": "open",
+  "args": {
+   "path": "{OUT}/cadcraft_smoke.dxf"
+  },
+  "expect": [
+   {
+    "json": "/entities",
+    "eq": 5
+   },
+   {
+    "json": "/warnings",
+    "len": 0
+   }
+  ]
+ },
+ {
+  "tool": "inspect_drawing",
+  "args": {
+   "entities": false
+  },
+  "expect": [
+   {
+    "json": "/counts",
+    "eq": {
+     "Circle": 1,
+     "Dimension": 1,
+     "Hatch": 1,
+     "Polyline": 1,
+     "Text": 1
+    }
+   },
+   {
+    "json": "/currentLayer",
+    "eq": "Notes"
+   },
+   {
+    "json": "/dirty",
+    "eq": false
+   },
+   {
+    "json": "/layers/2/name",
+    "eq": "Outline"
+   },
+   {
+    "json": "/layers/2/color",
+    "eq": "Red"
+   },
+   {
+    "json": "/layers/3/name",
+    "eq": "Notes"
+   },
+   {
+    "json": "/layers/3/color",
+    "eq": "Blue"
+   }
+  ]
+ },
+ {
+  "tool": "query_entities",
+  "args": {
+   "type": "Circle"
+  },
+  "expect": [
+   {
+    "json": "/entities/0/geometry/center/x",
+    "approx": 60,
+    "tol": 1e-06
+   },
+   {
+    "json": "/entities/0/layer",
+    "eq": "Outline"
+   }
+  ]
+ },
+ {
+  "tool": "query_entities",
+  "args": {
+   "type": "Hatch"
+  },
+  "expect": [
+   {
+    "json": "/entities/0/color",
+    "eq": "Green"
+   },
+   {
+    "json": "/entities/0/geometry/pattern",
+    "eq": "SOLID"
+   },
+   {
+    "json": "/entities/0/geometry/loops/0/vertices/0/p/x",
+    "approx": 40,
+    "tol": 1e-06
+   },
+   {
+    "json": "/entities/0/geometry/loops/0/vertices/1/p/x",
+    "approx": 80,
+    "tol": 1e-06
+   }
+  ]
+ },
+ {
+  "tool": "query_entities",
+  "args": {
+   "type": "Text"
+  },
+  "expect": [
+   {
+    "json": "/entities/0/geometry/value",
+    "eq": "MCP smoke test"
+   },
+   {
+    "json": "/entities/0/geometry/style",
+    "eq": "Title"
+   },
+   {
+    "json": "/entities/0/geometry/widthFactor",
+    "approx": 1.2,
+    "tol": 1e-09
+   },
+   {
+    "json": "/entities/0/layer",
+    "eq": "Notes"
+   }
+  ]
+ },
+ {
+  "tool": "find_text",
+  "args": {
+   "contains": "SMOKE"
+  },
+  "expect": [
+   {
+    "json": "/count",
+    "eq": 1
+   },
+   {
+    "json": "/texts/0/text",
+    "eq": "MCP smoke test"
+   }
+  ]
+ },
+ {
+  "tool": "query_entities",
+  "args": {
+   "type": "Dimension"
+  },
+  "expect": [
+   {
+    "json": "/entities/0/geometry/measurement",
+    "approx": 100,
+    "tol": 1e-06
+   },
+   {
+    "json": "/entities/0/geometry/block",
+    "eq": "*D1"
+   }
+  ]
+ },
+ {
+  "tool": "render",
+  "args": {
+   "window": [
+    [
+     -20,
+     -20
+    ],
+    [
+     140,
+     80
+    ]
+   ],
+   "width": 800,
+   "height": 500
+  },
+  "expect": [
+   {
+    "pixel": "$img",
+    "x": 475,
+    "y": 250,
+    "rgb": [
+     0,
+     255,
+     0
+    ],
+    "tol": 10
+   },
+   {
+    "pixel": "$img",
+    "x": 275,
+    "y": 250,
+    "rgb": [
+     33,
+     40,
+     48
+    ],
+    "tol": 10
+   }
+  ]
+ },
+ {
+  "restart": true
+ },
+ {
+  "tool": "open",
+  "args": {
+   "path": "{OUT}/cadcraft_smoke.dwg"
+  },
+  "expect": [
+   {
+    "json": "/entities",
+    "eq": 5
+   },
+   {
+    "json": "/warnings",
+    "len": 0
+   }
+  ]
+ },
+ {
+  "tool": "inspect_drawing",
+  "args": {
+   "entities": false
+  },
+  "expect": [
+   {
+    "json": "/counts",
+    "eq": {
+     "Circle": 1,
+     "Dimension": 1,
+     "Hatch": 1,
+     "Polyline": 1,
+     "Text": 1
+    }
+   },
+   {
+    "json": "/currentLayer",
+    "eq": "Notes"
+   },
+   {
+    "json": "/path",
+    "eq": "{OUT}/cadcraft_smoke.dwg"
+   },
+   {
+    "json": "/layers/2/name",
+    "eq": "Outline"
+   },
+   {
+    "json": "/layers/2/color",
+    "eq": "Red"
+   },
+   {
+    "json": "/layers/3/name",
+    "eq": "Notes"
+   },
+   {
+    "json": "/layers/3/color",
+    "eq": "Blue"
+   },
+   {
+    "json": "/dirty",
+    "eq": false
+   }
+  ]
+ },
+ {
+  "tool": "query_entities",
+  "args": {
+   "type": "Hatch"
+  },
+  "expect": [
+   {
+    "json": "/entities/0/color",
+    "eq": "Green"
+   },
+   {
+    "json": "/entities/0/geometry/pattern",
+    "eq": "SOLID"
+   },
+   {
+    "json": "/entities/0/geometry/loops/0/vertices/1/p/x",
+    "approx": 80,
+    "tol": 1e-06
+   }
+  ]
+ },
+ {
+  "tool": "query_entities",
+  "args": {
+   "type": "Text"
+  },
+  "expect": [
+   {
+    "json": "/entities/0/geometry/widthFactor",
+    "approx": 1.2,
+    "tol": 1e-09
+   },
+   {
+    "json": "/entities/0/geometry/style",
+    "eq": "Title"
+   }
+  ]
+ },
+ {
+  "tool": "query_entities",
+  "args": {
+   "type": "Dimension"
+  },
+  "expect": [
+   {
+    "json": "/entities/0/geometry/measurement",
+    "approx": 100,
+    "tol": 1e-06
+   }
+  ]
+ },
+ {
+  "tool": "render",
+  "args": {
+   "window": [
+    [
+     -20,
+     -20
+    ],
+    [
+     140,
+     80
+    ]
+   ],
+   "width": 800,
+   "height": 500
+  },
+  "expect": [
+   {
+    "pixel": "$img",
+    "x": 475,
+    "y": 250,
+    "rgb": [
+     0,
+     255,
+     0
+    ],
+    "tol": 10
+   },
+   {
+    "pixel": "$img",
+    "x": 275,
+    "y": 250,
+    "rgb": [
+     33,
+     40,
+     48
+    ],
+    "tol": 10
+   }
+  ]
+ },
+ {
+  "restart": true
+ },
+ {
+  "tool": "open",
+  "args": {
+   "path": "{OUT}/cadcraft_smoke.svg"
+  },
+  "expect": [
+   {
+    "json": "/entities",
+    "gte": 50
+   },
+   {
+    "json": "/warnings",
+    "len": 0
+   }
+  ]
+ },
+ {
+  "tool": "inspect_drawing",
+  "args": {
+   "entities": false
+  },
+  "expect": [
+   {
+    "json": "/counts/Polyline",
+    "gte": 50
+   },
+   {
+    "json": "/counts/Circle",
+    "exists": false
+   },
+   {
+    "json": "/counts/Hatch",
+    "exists": false
+   },
+   {
+    "json": "/counts/Text",
+    "exists": false
+   },
+   {
+    "json": "/counts/Dimension",
+    "exists": false
+   }
+  ]
+ }
+]

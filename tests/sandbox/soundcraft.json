@@ -1,0 +1,762 @@
+[
+ {
+  "label": "setup: tests/sandbox/soundcraft.setup.py {OUT} runs first (the runner does it). Flags: --automation-read-root {IN} --automation-write-root {OUT}; cwd {OUT}",
+  "tool": "new_session",
+  "args": {
+   "name": "Sandbox",
+   "template": "blank",
+   "sample_rate": 48000
+  },
+  "expect": [
+   {
+    "json": "/sample_rate",
+    "eq": 48000
+   }
+  ]
+ },
+ {
+  "label": "a track with 0.5 s of tone to bounce",
+  "tool": "execute",
+  "args": {
+   "command": "track.new",
+   "params": {
+    "name": "Tone",
+    "format": "mono"
+   }
+  },
+  "capture": {
+   "tone": "/tracks/0"
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "audiosuite.process",
+   "params": {
+    "process": "signal_generator",
+    "tracks": [
+     "${tone}"
+    ],
+    "start": 0,
+    "end": {
+     "seconds": 0.5
+    },
+    "params": {
+     "waveform": 0,
+     "freq": 1000,
+     "level": -12
+    }
+   }
+  },
+  "expect": [
+   {
+    "json": "/processed",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "label": "WRITE inside {OUT} works",
+  "tool": "bounce_mix",
+  "args": {
+   "path": "{OUT}/sbx_inside.wav",
+   "start": 0,
+   "end": {
+    "seconds": 0.5
+   }
+  },
+  "expect": [
+   {
+    "json": "/peak_db",
+    "approx": -15.0,
+    "tol": 0.05
+   },
+   {
+    "media": "{OUT}/sbx_inside.wav",
+    "codec": "pcm_s24le",
+    "duration": 0.5
+   }
+  ]
+ },
+ {
+  "label": "READ inside {IN} works",
+  "tool": "import_audio",
+  "args": {
+   "path": "{IN}/test_clip.mp4"
+  },
+  "expect": [
+   {
+    "json": "/imported/0/channels",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "label": "READ {OUT} works: the plugin's launcher adds the output folder as a read root (the bare app's write root grants no read)",
+  "tool": "import_audio",
+  "args": {
+   "path": "{OUT}/inside_seed.wav"
+  },
+  "expect": [
+   {
+    "json": "/imported/0/frames",
+    "eq": 12000
+   }
+  ]
+ },
+ {
+  "label": "save inside {OUT} works ...",
+  "tool": "save_session",
+  "args": {
+   "path": "{OUT}/sbx.scraft",
+   "replace": true
+  },
+  "expect": [
+   {
+    "file": "{OUT}/sbx.scraft",
+    "min_bytes": 1000
+   }
+  ]
+ },
+ {
+  "label": "... and reopening the saved session from {OUT} works for the same reason",
+  "tool": "open_session",
+  "args": {
+   "path": "{OUT}/sbx.scraft"
+  },
+  "expect": [
+   {
+    "json": "/name",
+    "eq": "sbx"
+   },
+   {
+    "json": "/missing",
+    "len": 0
+   }
+  ]
+ },
+ {
+  "label": "READ absolute outside both roots: refused",
+  "tool": "import_audio",
+  "args": {
+   "path": "{OUT}_outside/outside.wav"
+  },
+  "expect_error": "automation path rejected: outside the read root"
+ },
+ {
+  "label": "READ '..' out of {IN}: refused",
+  "tool": "import_audio",
+  "args": {
+   "path": "{IN}/../test_clip.mp4"
+  },
+  "expect_error": "automation path rejected: outside the read root"
+ },
+ {
+  "label": "READ relative path: resolved against cwd {OUT}, a read root under the plugin, so allowed",
+  "tool": "import_audio",
+  "args": {
+   "path": "inside_seed.wav"
+  },
+  "expect": [
+   {
+    "json": "/imported/0/frames",
+    "eq": 12000
+   }
+  ]
+ },
+ {
+  "label": "READ through the junction {OUT}/jx: refused",
+  "tool": "import_audio",
+  "args": {
+   "path": "{OUT}/jx/outside.wav"
+  },
+  "expect_error": "automation path rejected: outside the read root"
+ },
+ {
+  "label": "READ UNC path: refused (cannot resolve)",
+  "tool": "import_audio",
+  "args": {
+   "path": "\\\\127.0.0.1\\nosuchshare\\x.wav"
+  },
+  "expect_error": "automation path rejected: cannot resolve"
+ },
+ {
+  "label": "READ device name NUL.wav inside {IN}: refused",
+  "tool": "import_audio",
+  "args": {
+   "path": "{IN}/NUL.wav"
+  },
+  "expect_error": "automation path rejected: reserved device names are not allowed"
+ },
+ {
+  "label": "READ device name CON: refused",
+  "tool": "import_audio",
+  "args": {
+   "path": "CON"
+  },
+  "expect_error": "automation path rejected: reserved device names are not allowed"
+ },
+ {
+  "label": "WRITE absolute outside both roots: refused, nothing written",
+  "tool": "bounce_mix",
+  "args": {
+   "path": "{OUT}_outside/sbx_refused.wav",
+   "start": 0,
+   "end": {
+    "seconds": 0.5
+   }
+  },
+  "expect_error": "automation path rejected: outside the write root",
+  "expect": [
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/sbx_refused.wav"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ },
+ {
+  "label": "WRITE '..' out of {OUT}: refused, nothing written",
+  "tool": "bounce_mix",
+  "args": {
+   "path": "{OUT}/../sbx_dotdot.wav",
+   "start": 0,
+   "end": {
+    "seconds": 0.5
+   }
+  },
+  "expect_error": "automation path rejected: outside the write root",
+  "expect": [
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}/../sbx_dotdot.wav"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ },
+ {
+  "label": "WRITE '..' that stays inside {OUT}: allowed (normalised)",
+  "tool": "bounce_mix",
+  "args": {
+   "path": "{OUT}/nosuchdir/../sbx_dd_inside.wav",
+   "start": 0,
+   "end": {
+    "seconds": 0.5
+   }
+  },
+  "expect": [
+   {
+    "media": "{OUT}/sbx_dd_inside.wav",
+    "codec": "pcm_s24le",
+    "duration": 0.5
+   }
+  ]
+ },
+ {
+  "label": "WRITE relative path: NOT refused; it resolves against the server cwd ({OUT})",
+  "tool": "bounce_mix",
+  "args": {
+   "path": "sbx_rel.wav",
+   "start": 0,
+   "end": {
+    "seconds": 0.5
+   }
+  },
+  "expect": [
+   {
+    "json": "/path",
+    "eq": "sbx_rel.wav"
+   },
+   {
+    "media": "{OUT}/sbx_rel.wav",
+    "codec": "pcm_s24le",
+    "duration": 0.5
+   }
+  ]
+ },
+ {
+  "label": "WRITE relative path that climbs out of cwd: refused",
+  "tool": "bounce_mix",
+  "args": {
+   "path": "../sbx_rel_escape.wav",
+   "start": 0,
+   "end": {
+    "seconds": 0.5
+   }
+  },
+  "expect_error": "automation path rejected: outside the write root",
+  "expect": [
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}/../sbx_rel_escape.wav"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ },
+ {
+  "label": "WRITE through the junction {OUT}/jx: refused, nothing written",
+  "tool": "bounce_mix",
+  "args": {
+   "path": "{OUT}/jx/sbx_viajx.wav",
+   "start": 0,
+   "end": {
+    "seconds": 0.5
+   }
+  },
+  "expect_error": "automation path rejected: outside the write root",
+  "expect": [
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/sbx_viajx.wav"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ },
+ {
+  "label": "WRITE UNC path: refused (cannot resolve)",
+  "tool": "bounce_mix",
+  "args": {
+   "path": "\\\\127.0.0.1\\nosuchshare\\x.wav",
+   "start": 0,
+   "end": {
+    "seconds": 0.5
+   }
+  },
+  "expect_error": "automation path rejected: cannot resolve"
+ },
+ {
+  "label": "WRITE UNC path with forward slashes: refused",
+  "tool": "bounce_mix",
+  "args": {
+   "path": "//127.0.0.1/nosuchshare/x.wav",
+   "start": 0,
+   "end": {
+    "seconds": 0.5
+   }
+  },
+  "expect_error": "automation path rejected: cannot resolve"
+ },
+ {
+  "label": "WRITE device name {OUT}/NUL.wav: refused",
+  "tool": "bounce_mix",
+  "args": {
+   "path": "{OUT}/NUL.wav",
+   "start": 0,
+   "end": {
+    "seconds": 0.5
+   }
+  },
+  "expect_error": "automation path rejected: reserved device names are not allowed"
+ },
+ {
+  "label": "WRITE device name {OUT}/CON: refused",
+  "tool": "bounce_mix",
+  "args": {
+   "path": "{OUT}/CON",
+   "start": 0,
+   "end": {
+    "seconds": 0.5
+   }
+  },
+  "expect_error": "automation path rejected: reserved device names are not allowed"
+ },
+ {
+  "label": "WRITE bare device name CON: refused",
+  "tool": "execute",
+  "args": {
+   "command": "file.export_session_text",
+   "params": {
+    "path": "CON",
+    "replace": true
+   }
+  },
+  "expect_error": "automation path rejected: reserved device names are not allowed"
+ },
+ {
+  "label": "GENERIC execute file.export_session_text outside: refused, nothing written",
+  "tool": "execute",
+  "args": {
+   "command": "file.export_session_text",
+   "params": {
+    "path": "{OUT}_outside/sbx_t.txt",
+    "replace": true
+   }
+  },
+  "expect_error": "automation path rejected: outside the write root",
+  "expect": [
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/sbx_t.txt"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ },
+ {
+  "label": "GENERIC execute session.save_copy outside: refused, nothing written",
+  "tool": "execute",
+  "args": {
+   "command": "session.save_copy",
+   "params": {
+    "path": "{OUT}_outside/sbx_copy.scraft",
+    "replace": true
+   }
+  },
+  "expect_error": "automation path rejected: outside the write root",
+  "expect": [
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/sbx_copy.scraft"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   },
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/sbx_copy.scraft.tmp"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ },
+ {
+  "label": "GENERIC batch file.bounce_mix outside: refused, nothing written",
+  "tool": "batch",
+  "args": {
+   "calls": [
+    {
+     "command": "file.bounce_mix",
+     "params": {
+      "path": "{OUT}_outside/sbx_batch.wav",
+      "start": 0,
+      "end": {
+       "seconds": 0.5
+      }
+     }
+    }
+   ]
+  },
+  "expect_error": "automation path rejected: outside the write root",
+  "expect": [
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/sbx_batch.wav"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ },
+ {
+  "label": "GENERIC batch keep_going: the inside call runs, the outside one is refused",
+  "tool": "batch",
+  "args": {
+   "keep_going": true,
+   "calls": [
+    {
+     "command": "file.bounce_mix",
+     "params": {
+      "path": "{OUT}_outside/sbx_batch2.wav",
+      "start": 0,
+      "end": {
+       "seconds": 0.5
+      }
+     }
+    },
+    {
+     "command": "file.bounce_mix",
+     "params": {
+      "path": "{OUT}/sbx_batch_inside.wav",
+      "start": 0,
+      "end": {
+       "seconds": 0.5
+      }
+     }
+    }
+   ]
+  },
+  "expect_error": "outside the write root",
+  "expect": [
+   {
+    "media": "{OUT}/sbx_batch_inside.wav",
+    "codec": "pcm_s24le",
+    "duration": 0.5
+   },
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/sbx_batch2.wav"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ },
+ {
+  "label": "GENERIC execute file.import_audio paths[] outside: refused",
+  "tool": "execute",
+  "args": {
+   "command": "file.import_audio",
+   "params": {
+    "paths": [
+     "{OUT}_outside/outside.wav"
+    ]
+   }
+  },
+  "expect_error": "automation path rejected: outside the read root"
+ },
+ {
+  "label": "GENERIC execute track.save_preset outside: refused, nothing written",
+  "tool": "execute",
+  "args": {
+   "command": "track.save_preset",
+   "params": {
+    "path": "{OUT}_outside/sbx_preset.json",
+    "track": "${tone}"
+   }
+  },
+  "expect_error": "automation path rejected: outside the write root",
+  "expect": [
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/sbx_preset.json"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ },
+ {
+  "label": "GENERIC execute track.load_preset outside: refused",
+  "tool": "execute",
+  "args": {
+   "command": "track.load_preset",
+   "params": {
+    "path": "{OUT}_outside/sbx_preset.json",
+    "tracks": [
+     "${tone}"
+    ]
+   }
+  },
+  "expect_error": "automation path rejected: outside the read root"
+ },
+ {
+  "label": "GENERIC execute file.export_clips dir outside: refused, no clip file written (inside a root it writes Tone-signgene.wav, named after the generated clip)",
+  "tool": "execute",
+  "args": {
+   "command": "file.export_clips",
+   "params": {
+    "dir": "{OUT}_outside"
+   }
+  },
+  "expect_error": "automation path rejected: outside the write root",
+  "expect": [
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/Tone-signgene.wav"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ },
+ {
+  "label": "GENERIC execute file.bounce_stems dir outside: refused, no stem written (stems are named '<session> - <track>.wav')",
+  "tool": "execute",
+  "args": {
+   "command": "file.bounce_stems",
+   "params": {
+    "dir": "{OUT}_outside",
+    "start": 0,
+    "end": {
+     "seconds": 0.5
+    }
+   }
+  },
+  "expect_error": "automation path rejected: outside the write root",
+  "expect": [
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/sbx - Tone.wav"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   },
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/sbx - test_clip.wav"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ },
+ {
+  "label": "GENERIC execute session.open outside: refused",
+  "tool": "execute",
+  "args": {
+   "command": "session.open",
+   "params": {
+    "path": "{OUT}_outside/outside.wav"
+   }
+  },
+  "expect_error": "automation path rejected: outside the read root"
+ },
+ {
+  "label": "no refused read changed the session: still 'sbx' with Tone, test_clip, inside_seed (saved) and inside_seed (step 11)",
+  "tool": "inspect_session",
+  "args": {
+   "detail": "summary"
+  },
+  "expect": [
+   {
+    "json": "/name",
+    "eq": "sbx"
+   },
+   {
+    "json": "/tracks",
+    "len": 4
+   },
+   {
+    "json": "/tracks/0/name",
+    "eq": "Tone"
+   },
+   {
+    "json": "/tracks/1/name",
+    "eq": "test_clip"
+   }
+  ]
+ },
+ {
+  "label": "GENERIC setup.disk_allocation accepts a folder outside the roots (stored, not confined) ...",
+  "tool": "execute",
+  "args": {
+   "command": "setup.disk_allocation",
+   "params": {
+    "path": "{OUT}_outside"
+   }
+  },
+  "expect": [
+   {
+    "json": "/root",
+    "contains": "_outside"
+   }
+  ]
+ },
+ {
+  "label": "... new audio made after it ...",
+  "tool": "execute",
+  "args": {
+   "command": "track.new",
+   "params": {
+    "name": "Alloc",
+    "format": "mono"
+   }
+  },
+  "capture": {
+   "alloc": "/tracks/0"
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "audiosuite.process",
+   "params": {
+    "process": "signal_generator",
+    "tracks": [
+     "${alloc}"
+    ],
+    "start": 0,
+    "end": {
+     "seconds": 0.25
+    },
+    "params": {
+     "waveform": 0,
+     "freq": 440,
+     "level": -12
+    }
+   }
+  },
+  "expect": [
+   {
+    "json": "/processed",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "label": "... is still saved inside {OUT}, and nothing lands in the outside folder",
+  "tool": "save_session",
+  "args": {
+   "path": "{OUT}/sbx_alloc.scraft",
+   "replace": true
+  },
+  "expect": [
+   {
+    "json": "/audio_files_written",
+    "in": [
+     0,
+     1
+    ]
+   },
+   {
+    "media": "{OUT}/Audio Files/Alloc-signgene.wav",
+    "codec": "pcm_f32le",
+    "duration": 0.25
+   },
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/Alloc-signgene.wav"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   },
+   {
+    "run": [
+     "{CLI}",
+     "info",
+     "{OUT}_outside/Audio Files/Alloc-signgene.wav"
+    ],
+    "exit": 1,
+    "stdout_contains": "(os error"
+   }
+  ]
+ }
+]

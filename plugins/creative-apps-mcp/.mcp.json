@@ -3,11 +3,14 @@
     "photocraft": {
       "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/bin/craft-mcp.mjs",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
         "photocraft",
         "mcp"
       ],
       "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}",
         "CRAFT_OPT_PHOTOCRAFT_READ_ROOT": "${user_config.photocraft_read_root}",
         "CRAFT_OPT_PHOTOCRAFT_WRITE_ROOT": "${user_config.photocraft_write_root}"
       }
@@ -15,53 +18,161 @@
     "vectorcraft": {
       "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/bin/craft-mcp.mjs",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
         "vectorcraft",
         "mcp",
         "--headless"
-      ]
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
     },
     "filmcraft": {
       "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/bin/craft-mcp.mjs",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
         "filmcraft",
         "mcp"
-      ]
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
     },
     "lightcraft": {
       "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/bin/craft-mcp.mjs",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
         "lightcraft",
         "mcp",
         "--compact"
-      ]
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
     },
     "pdfcraft": {
       "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/bin/craft-mcp.mjs",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
         "pdfcraft",
         "mcp",
         "--compact"
-      ]
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
     },
     "effectcraft": {
       "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/bin/craft-mcp.mjs",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
         "effectcraft",
         "mcp"
-      ]
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
     },
     "designcraft": {
       "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/bin/craft-mcp.mjs",
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
         "designcraft",
         "mcp"
-      ]
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
+    },
+    "figcraft": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
+        "figcraft",
+        "mcp"
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
+    },
+    "wordcraft": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
+        "wordcraft",
+        "mcp"
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
+    },
+    "deckcraft": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
+        "deckcraft",
+        "mcp"
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
+    },
+    "gridcraft": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
+        "gridcraft",
+        "mcp"
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
+    },
+    "cadcraft": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
+        "cadcraft",
+        "mcp"
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
+    },
+    "soundcraft": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/scripts/craft-mcp.mjs",
+        "soundcraft",
+        "mcp"
+      ],
+      "env": {
+        "CRAFT_OPT_WRITE_ROOT": "${user_config.write_root}",
+        "CRAFT_OPT_READ_SCOPE": "${user_config.read_scope}",
+        "CRAFT_OPT_EXTRA_READ_ROOT": "${user_config.extra_read_root}"
+      }
     }
   }
 }

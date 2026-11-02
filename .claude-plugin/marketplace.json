@@ -9,7 +9,7 @@
     {
       "name": "creative-apps-mcp",
       "source": "./plugins/creative-apps-mcp",
-      "description": "Unofficial: drive PhotoCraft, VectorCraft, FilmCraft, LightCraft, PdfCraft, EffectCraft and DesignCraft from Claude Code through their built-in MCP servers, with a tested skill per app."
+      "description": "Unofficial: drive PhotoCraft, VectorCraft, FilmCraft, LightCraft, PdfCraft, EffectCraft, DesignCraft, FigCraft, WordCraft, DeckCraft, GridCraft, CADCraft and SoundCraft from Claude Code through their built-in MCP servers, with a tested skill per app."
     }
   ]
 }

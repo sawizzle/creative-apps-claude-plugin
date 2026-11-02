@@ -1,10 +1,1105 @@
-[{"tool":"new_document","args":{"width":612,"height":792}},
- {"tool":"execute","args":{"command":"frame.create","params":{"rect":[54,54,558,200],"content":"text","text":"MCP smoke test"}}},
- {"tool":"execute","args":{"command":"selection.set","params":{"ids":[8]}}},
- {"tool":"execute","args":{"command":"type.char","params":{"size":36}}},
- {"tool":"place_image","args":{"path":"{IN}/test_card.png","x":54,"y":240,"width":504}},
- {"tool":"inspect_document","args":{}},
- {"tool":"render_page","args":{"page":0,"scale":1}},
- {"tool":"export_png","args":{"path":"{OUT}/designcraft_out.png","page":0,"scale":1}},
- {"tool":"execute","args":{"command":"file.exportPdf","params":{"path":"{OUT}/designcraft_out.pdf"}}},
- {"tool":"save_document","args":{"path":"{OUT}/designcraft_out.designcraft"}}]
+[
+ {
+  "note": "run checks need python, ffmpeg/ffprobe and the app CLI ({CLI}); every path is under {IN} or {OUT}",
+  "tool": "new_document",
+  "args": {
+   "width": 612,
+   "height": 792
+  },
+  "expect": [
+   {
+    "json": "/index",
+    "gte": 1
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "frame.create",
+   "params": {
+    "rect": [
+     54,
+     54,
+     558,
+     200
+    ],
+    "content": "text",
+    "text": "Draft"
+   }
+  },
+  "capture": {
+   "tframe": "/id",
+   "tstory": "/story"
+  }
+ },
+ {
+  "tool": "set_story_text",
+  "args": {
+   "frame": "${tframe}",
+   "text": "MCP smoke test\nSecond paragraph"
+  },
+  "expect": [
+   {
+    "json": "/paragraphs",
+    "eq": 2
+   },
+   {
+    "json": "/text",
+    "eq": "MCP smoke test\nSecond paragraph"
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "selection.set",
+   "params": {
+    "ids": [
+     "${tframe}"
+    ]
+   }
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "type.char",
+   "params": {
+    "attrs": {
+     "size": 36
+    }
+   }
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "type.selectionAttrs",
+   "params": {}
+  },
+  "expect": [
+   {
+    "json": "/chars/size",
+    "eq": 36
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "swatch.create",
+   "params": {
+    "name": "SmokeRed",
+    "color": {
+     "c": 0,
+     "m": 100,
+     "y": 100,
+     "k": 0
+    }
+   }
+  },
+  "expect": [
+   {
+    "json": "/name",
+    "eq": "SmokeRed"
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "frame.create",
+   "params": {
+    "rect": [
+     100,
+     300,
+     300,
+     500
+    ],
+    "shape": "rectangle",
+    "content": "unassigned"
+   }
+  },
+  "capture": {
+   "rect": "/id"
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "object.fill",
+   "params": {
+    "swatch": "SmokeRed",
+    "ids": [
+     "${rect}"
+    ]
+   }
+  },
+  "expect": [
+   {
+    "json": "/changed",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "tool": "place_image",
+  "args": {
+   "path": "{IN}/test_card.png",
+   "x": 54,
+   "y": 540,
+   "width": 256
+  },
+  "capture": {
+   "img": "/id",
+   "asset": "/asset"
+  }
+ },
+ {
+  "tool": "inspect_document",
+  "args": {},
+  "expect": [
+   {
+    "json": "/spreads/0/items",
+    "len": 3
+   },
+   {
+    "json": "/spreads/0/items/1/id",
+    "eq": "${rect}"
+   },
+   {
+    "json": "/spreads/0/items/1/fill",
+    "eq": "SmokeRed"
+   },
+   {
+    "json": "/spreads/0/items/2/id",
+    "eq": "${img}"
+   },
+   {
+    "json": "/spreads/0/items/2/bounds",
+    "eq": [
+     54,
+     540,
+     310,
+     684
+    ]
+   },
+   {
+    "json": "/stories/0/paragraphs",
+    "eq": 2
+   },
+   {
+    "json": "/stories/0/overset",
+    "eq": false
+   }
+  ]
+ },
+ {
+  "tool": "render_page",
+  "args": {
+   "page": 0,
+   "scale": 1,
+   "path": "{OUT}/smoke_render.png"
+  },
+  "expect": [
+   {
+    "json": "/width",
+    "eq": 612
+   },
+   {
+    "json": "/height",
+    "eq": 792
+   },
+   {
+    "pixel": "$img",
+    "x": 200,
+    "y": 400,
+    "rgb": [
+     227,
+     4,
+     18
+    ],
+    "tol": 12
+   },
+   {
+    "pixel": "$img",
+    "x": 182,
+    "y": 584,
+    "rgb": [
+     240,
+     200,
+     40
+    ],
+    "tol": 10
+   },
+   {
+    "pixel": "$img",
+    "x": 60,
+    "y": 546,
+    "rgb": [
+     40,
+     60,
+     90
+    ],
+    "tol": 10
+   },
+   {
+    "pixel": "$img",
+    "x": 450,
+    "y": 650,
+    "rgb": [
+     255,
+     255,
+     255
+    ],
+    "tol": 4
+   },
+   {
+    "media": "{OUT}/smoke_render.png",
+    "width": 612,
+    "height": 792,
+    "codec": "png"
+   }
+  ]
+ },
+ {
+  "tool": "export_png",
+  "args": {
+   "path": "{OUT}/smoke_page.png",
+   "page": 0
+  },
+  "expect": [
+   {
+    "json": "/width",
+    "eq": 1224
+   },
+   {
+    "json": "/height",
+    "eq": 1584
+   },
+   {
+    "media": "{OUT}/smoke_page.png",
+    "width": 1224,
+    "height": 1584,
+    "codec": "png"
+   },
+   {
+    "pixel": "{OUT}/smoke_page.png",
+    "x": 400,
+    "y": 800,
+    "rgb": [
+     227,
+     4,
+     18
+    ],
+    "tol": 12
+   },
+   {
+    "pixel": "{OUT}/smoke_page.png",
+    "x": 364,
+    "y": 1168,
+    "rgb": [
+     240,
+     200,
+     40
+    ],
+    "tol": 10
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.exportPdf",
+   "params": {
+    "path": "{OUT}/smoke.pdf",
+    "standard": "x4",
+    "title": "MCP smoke test"
+   }
+  },
+  "expect": [
+   {
+    "json": "/pages",
+    "eq": 1
+   },
+   {
+    "json": "/warnings",
+    "len": 0
+   },
+   {
+    "file": "{OUT}/smoke.pdf",
+    "min_bytes": 20000
+   },
+   {
+    "run": [
+     "{CLI}",
+     "validate-pdf",
+     "{OUT}/smoke.pdf"
+    ],
+    "exit": 0,
+    "stdout_contains": "\"valid\": true"
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.exportIdml",
+   "params": {
+    "path": "{OUT}/smoke.idml"
+   }
+  },
+  "expect": [
+   {
+    "zip_text": "{OUT}/smoke.idml",
+    "member": "Stories/Story_u${tstory}.xml",
+    "contains": "<Content>MCP smoke test</Content>"
+   },
+   {
+    "zip_text": "{OUT}/smoke.idml",
+    "member": "Stories/Story_u${tstory}.xml",
+    "contains": "PointSize=\"36\""
+   },
+   {
+    "zip_text": "{OUT}/smoke.idml",
+    "member": "Resources/Graphic.xml",
+    "contains": "SmokeRed"
+   },
+   {
+    "zip_text": "{OUT}/smoke.idml",
+    "member": "Spreads/Spread_u7.xml",
+    "contains": "LinkResourceURI=\"file:"
+   }
+  ]
+ },
+ {
+  "tool": "save_document",
+  "args": {
+   "path": "{OUT}/smoke.designcraft"
+  },
+  "expect": [
+   {
+    "json": "/bytes",
+    "gte": 8000
+   },
+   {
+    "zip_text": "{OUT}/smoke.designcraft",
+    "member": "meta.json",
+    "contains": "\"format\":\"designcraft\""
+   },
+   {
+    "zip_text": "{OUT}/smoke.designcraft",
+    "member": "document.json",
+    "contains": "MCP smoke test"
+   },
+   {
+    "zip_text": "{OUT}/smoke.designcraft",
+    "member": "document.json",
+    "contains": "\"link\": \"{IN}/test_card.png\""
+   },
+   {
+    "zip_text": "{OUT}/smoke.designcraft",
+    "member": "assets/${asset}.png",
+    "contains": "IHDR"
+   }
+  ]
+ },
+ {
+  "restart": true
+ },
+ {
+  "tool": "open_document",
+  "args": {
+   "path": "{OUT}/smoke.designcraft"
+  },
+  "expect": [
+   {
+    "json": "/warnings",
+    "len": 0
+   }
+  ]
+ },
+ {
+  "tool": "inspect_document",
+  "args": {},
+  "expect": [
+   {
+    "json": "/dirty",
+    "eq": false
+   },
+   {
+    "json": "/path",
+    "contains": "smoke.designcraft"
+   },
+   {
+    "json": "/spreads/0/items",
+    "len": 3
+   },
+   {
+    "json": "/spreads/0/items/1/fill",
+    "eq": "SmokeRed"
+   },
+   {
+    "json": "/spreads/0/items/2/bounds",
+    "eq": [
+     54,
+     540,
+     310,
+     684
+    ]
+   },
+   {
+    "json": "/swatches",
+    "contains": "SmokeRed"
+   },
+   {
+    "json": "/stories/0/preview",
+    "contains": "MCP smoke test"
+   }
+  ]
+ },
+ {
+  "tool": "get_story",
+  "args": {
+   "frame": "${tframe}"
+  },
+  "expect": [
+   {
+    "json": "/text",
+    "eq": "MCP smoke test\nSecond paragraph"
+   },
+   {
+    "json": "/paragraphs",
+    "eq": 2
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "selection.set",
+   "params": {
+    "ids": [
+     "${tframe}"
+    ]
+   }
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "type.selectionAttrs",
+   "params": {}
+  },
+  "expect": [
+   {
+    "json": "/chars/size",
+    "eq": 36
+   }
+  ]
+ },
+ {
+  "tool": "render_page",
+  "args": {
+   "page": 0,
+   "scale": 1,
+   "path": "{OUT}/smoke_reopen.png"
+  },
+  "expect": [
+   {
+    "pixel": "$img",
+    "x": 200,
+    "y": 400,
+    "rgb": [
+     227,
+     4,
+     18
+    ],
+    "tol": 12
+   },
+   {
+    "pixel": "$img",
+    "x": 182,
+    "y": 584,
+    "rgb": [
+     240,
+     200,
+     40
+    ],
+    "tol": 10
+   },
+   {
+    "pixel": "$img",
+    "x": 450,
+    "y": 650,
+    "rgb": [
+     255,
+     255,
+     255
+    ],
+    "tol": 4
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.exportHtml",
+   "params": {
+    "path": "{OUT}/smoke.html"
+   }
+  },
+  "expect": [
+   {
+    "file_text": "{OUT}/smoke.html",
+    "contains": "MCP smoke test"
+   },
+   {
+    "file_text": "{OUT}/smoke.html",
+    "contains": "Second paragraph"
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.exportEpub",
+   "params": {
+    "path": "{OUT}/smoke.epub"
+   }
+  },
+  "expect": [
+   {
+    "zip_text": "{OUT}/smoke.epub",
+    "member": "mimetype",
+    "contains": "application/epub+zip"
+   },
+   {
+    "zip_text": "{OUT}/smoke.epub",
+    "member": "OEBPS/content.xhtml",
+    "contains": ">MCP smoke test<"
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.exportPptx",
+   "params": {
+    "path": "{OUT}/smoke_reflow.pptx",
+    "lineBreaks": "reflow"
+   }
+  },
+  "expect": [
+   {
+    "json": "/slides",
+    "eq": 1
+   },
+   {
+    "zip_text": "{OUT}/smoke_reflow.pptx",
+    "member": "ppt/slides/slide1.xml",
+    "contains": "<a:t>MCP smoke test</a:t>"
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.exportPptx",
+   "params": {
+    "path": "{OUT}/smoke_keep.pptx"
+   }
+  },
+  "note": "default line breaks: the text is all there but split into runs",
+  "expect": [
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import re,sys,zipfile\nr=re.findall(r'<a:t>([^<]*)</a:t>',zipfile.ZipFile(sys.argv[1]).read('ppt/slides/slide1.xml').decode())\nprint(r)\nsys.exit(not ('MCP smoke test' not in r and ''.join(r).startswith('MCP smoke testSecond paragraph')))",
+     "{OUT}/smoke_keep.pptx"
+    ],
+    "exit": 0
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "edit.deselectAll",
+   "params": {}
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.exportText",
+   "params": {
+    "path": "{OUT}/smoke_frameonly.txt",
+    "frame": "${tframe}"
+   }
+  },
+  "expect_error": "select a text frame",
+  "expect": [
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import os,sys; sys.exit(any(os.path.exists(p) for p in sys.argv[1:]))",
+     "{OUT}/smoke_frameonly.txt"
+    ],
+    "exit": 0
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "selection.set",
+   "params": {
+    "ids": [
+     "${tframe}"
+    ]
+   }
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.exportText",
+   "params": {
+    "path": "{OUT}/smoke.txt"
+   }
+  },
+  "expect": [
+   {
+    "file_text": "{OUT}/smoke.txt",
+    "contains": "MCP smoke test"
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.package",
+   "params": {
+    "dir": "{OUT}/pkg"
+   }
+  },
+  "note": "saved files hold absolute image paths (checked above); the package uses relative ones",
+  "expect": [
+   {
+    "file": "{OUT}/pkg/Links/test_card.png",
+    "min_bytes": 1000
+   },
+   {
+    "run": [
+     "python",
+     "-I",
+     "-c",
+     "import json,os,re,sys,zipfile\nd=sys.argv[1]; fs=os.listdir(d)\ndc=[f for f in fs if f.endswith('.designcraft')]; idml=[f for f in fs if f.endswith('.idml')]\nlinks=[a.get('link') for a in json.loads(zipfile.ZipFile(os.path.join(d,dc[0])).read('document.json'))['assets'].values()]\nz=zipfile.ZipFile(os.path.join(d,idml[0]))\nuris=[u for n in z.namelist() for u in re.findall(r'LinkResourceURI=\"([^\"]*)\"',z.read(n).decode('utf-8','replace'))]\nok=links==['Links/test_card.png'] and uris==['file:Links/test_card.png']\nprint(sorted(fs),links,uris,'relative links ok' if ok else 'BAD'); sys.exit(not ok)",
+     "{OUT}/pkg"
+    ],
+    "exit": 0,
+    "stdout_contains": "relative links ok"
+   }
+  ]
+ },
+ {
+  "tool": "place_image",
+  "args": {
+   "path": "{IN}/test_card.jpg",
+   "x": 330,
+   "y": 540,
+   "width": 228
+  },
+  "expect": [
+   {
+    "json": "/id",
+    "gte": 1
+   }
+  ]
+ },
+ {
+  "tool": "batch",
+  "args": {
+   "commands": [
+    {
+     "command": "frame.create",
+     "params": {
+      "rect": [
+       400,
+       700,
+       558,
+       760
+      ],
+      "shape": "rectangle",
+      "content": "unassigned"
+     }
+    },
+    {
+     "command": "object.fill",
+     "params": {
+      "swatch": "SmokeRed",
+      "ids": [
+       "$0.id"
+      ]
+     }
+    }
+   ]
+  },
+  "expect": [
+   {
+    "json": "/completed",
+    "eq": 2
+   },
+   {
+    "json": "/results/1/changed",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "tool": "batch",
+  "args": {
+   "commands": [
+    {
+     "command": "frame.create",
+     "params": {
+      "rect": [
+       330,
+       700,
+       380,
+       760
+      ],
+      "shape": "rectangle",
+      "content": "unassigned"
+     }
+    },
+    {
+     "command": "no.such.command",
+     "params": {}
+    }
+   ]
+  },
+  "expect_error": "unknown command",
+  "expect": [
+   {
+    "json": "/completed",
+    "eq": 1
+   },
+   {
+    "json": "/failedIndex",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "tool": "inspect_document",
+  "args": {},
+  "note": "3 items + JPEG + batch rectangle + the frame the failed batch made first",
+  "expect": [
+   {
+    "json": "/spreads/0/items",
+    "len": 6
+   }
+  ]
+ },
+ {
+  "tool": "export_png",
+  "args": {
+   "path": "{OUT}/smoke_page.jpg",
+   "page": 0
+  },
+  "expect": [
+   {
+    "media": "{OUT}/smoke_page.jpg",
+    "width": 1224,
+    "height": 1584,
+    "codec": "mjpeg"
+   },
+   {
+    "pixel": "{OUT}/smoke_page.jpg",
+    "x": 888,
+    "y": 1158,
+    "rgb": [
+     240,
+     200,
+     40
+    ],
+    "tol": 20
+   },
+   {
+    "pixel": "{OUT}/smoke_page.jpg",
+    "x": 672,
+    "y": 1092,
+    "rgb": [
+     40,
+     60,
+     90
+    ],
+    "tol": 20
+   },
+   {
+    "pixel": "{OUT}/smoke_page.jpg",
+    "x": 958,
+    "y": 1460,
+    "rgb": [
+     227,
+     4,
+     18
+    ],
+    "tol": 20
+   },
+   {
+    "pixel": "{OUT}/smoke_page.jpg",
+    "x": 400,
+    "y": 800,
+    "rgb": [
+     227,
+     4,
+     18
+    ],
+    "tol": 20
+   },
+   {
+    "run": [
+     "{CLI}",
+     "describe",
+     "swatch.create"
+    ],
+    "exit": 0,
+    "stdout_contains": "\"id\": \"swatch.create\""
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "app.nonexistent",
+   "params": {}
+  },
+  "expect_error": "app.nonexistent",
+  "note": "an unknown id is an error (its message may wrongly say 'UI command')"
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "frame.create",
+   "params": {
+    "rect": [
+     330,
+     300,
+     560,
+     360
+    ],
+    "content": "text",
+    "text": "A"
+   }
+  },
+  "capture": {
+   "cframe": "/id",
+   "cstory": "/story"
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "type.char",
+   "params": {
+    "attrs": {
+     "size": 30
+    }
+   }
+  }
+ },
+ {
+  "tool": "type_text",
+  "args": {
+   "text": "B"
+  },
+  "expect": [
+   {
+    "json": "/inserted",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "text.select",
+   "params": {
+    "story": "${cstory}",
+    "anchor": 0,
+    "focus": 1
+   }
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "type.selectionAttrs",
+   "params": {}
+  },
+  "expect": [
+   {
+    "json": "/chars/size",
+    "eq": 12
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "text.select",
+   "params": {
+    "story": "${cstory}",
+    "anchor": 1,
+    "focus": 2
+   }
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "type.selectionAttrs",
+   "params": {}
+  },
+  "expect": [
+   {
+    "json": "/chars/size",
+    "eq": 30
+   }
+  ]
+ },
+ {
+  "tool": "set_story_text",
+  "args": {
+   "frame": "${cframe}",
+   "text": "XY"
+  },
+  "expect": [
+   {
+    "json": "/text",
+    "eq": "XY"
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "text.select",
+   "params": {
+    "story": "${cstory}",
+    "anchor": 1,
+    "focus": 2
+   }
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "type.selectionAttrs",
+   "params": {}
+  },
+  "expect": [
+   {
+    "json": "/chars/size",
+    "eq": 12
+   }
+  ]
+ },
+ {
+  "tool": "new_document",
+  "args": {
+   "width": 200,
+   "height": 200
+  },
+  "expect": [
+   {
+    "json": "/index",
+    "gte": 2
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "swatch.create",
+   "params": {
+    "name": "RGBRed",
+    "color": "#ff0000"
+   }
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "frame.create",
+   "params": {
+    "rect": [
+     20,
+     20,
+     180,
+     180
+    ],
+    "shape": "rectangle",
+    "content": "unassigned"
+   }
+  },
+  "capture": {
+   "rgbrect": "/id"
+  }
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "object.fill",
+   "params": {
+    "swatch": "RGBRed",
+    "ids": [
+     "${rgbrect}"
+    ]
+   }
+  },
+  "expect": [
+   {
+    "json": "/changed",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "tool": "execute",
+  "args": {
+   "command": "file.exportPdf",
+   "params": {
+    "path": "{OUT}/smoke_rgb.pdf",
+    "standard": "x4"
+   }
+  },
+  "expect": [
+   {
+    "json": "/warnings",
+    "len": 1
+   },
+   {
+    "json": "/warnings/0",
+    "contains": "RGB"
+   },
+   {
+    "run": [
+     "{CLI}",
+     "validate-pdf",
+     "{OUT}/smoke_rgb.pdf"
+    ],
+    "exit": 1,
+    "stdout_contains": "RGB"
+   }
+  ]
+ }
+]

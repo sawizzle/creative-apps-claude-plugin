@@ -1,0 +1,767 @@
+[
+ {
+  "note": "Windows only (PowerShell, junctions, hard links, UNC and device paths). Needs IN and OUT as sibling folders, IN a fresh copy of the inputs, cwd = OUT; the setup runs inside steps 1-3 and refuses anything else.",
+  "tool": "doc_create",
+  "args": {
+   "from": "blank",
+   "pages": 1
+  },
+  "capture": {
+   "d": "/doc"
+  },
+  "expect": [
+   {
+    "json": "/pages",
+    "eq": 1
+   },
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "'' | & '{CLI}' mcp --compact --automation-read-root '{IN}' --automation-read-root '{OUT}' --automation-write-root '{OUT}'; exit $LASTEXITCODE"
+    ],
+    "exit": 1,
+    "stdout_contains": "--automation-read-root given twice"
+   },
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "'' | & '{CLI}' mcp --compact --automation-read-root '{IN}' --automation-write-root '{OUT}' --automation-write-root '{OUT}/..'; exit $LASTEXITCODE"
+    ],
+    "exit": 1,
+    "stdout_contains": "--automation-write-root given twice"
+   },
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "'' | & '{CLI}' mcp --compact --automation-read-roots '{IN}' --automation-write-root '{OUT}'; exit $LASTEXITCODE"
+    ],
+    "exit": 1,
+    "stdout_contains": "unknown option --automation-read-roots"
+   },
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "'' | & '{CLI}' mcp --compact --automation-read-root '{IN}' --automation-write-root '{OUT}/no_such_folder'; exit $LASTEXITCODE"
+    ],
+    "exit": 1,
+    "stdout_contains": "cannot open the automation write root"
+   }
+  ]
+ },
+ {
+  "tool": "doc_create",
+  "args": {
+   "from": "text",
+   "text": "OUTSIDE SECRET"
+  },
+  "capture": {
+   "s": "/doc"
+  },
+  "expect": [
+   {
+    "json": "/pages",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${s}",
+   "path": "{OUT}/seed_secret.pdf"
+  },
+  "expect": [
+   {
+    "file": "{OUT}/seed_secret.pdf",
+    "min_bytes": 300
+   },
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "$ErrorActionPreference='Stop'; $in=[IO.Path]::GetFullPath('{IN}'); $out=[IO.Path]::GetFullPath('{OUT}'); $p=Split-Path $out; if ((Split-Path $in) -ne $p) { 'layout error: IN and OUT must be sibling folders'; exit 2 }; if (Test-Path -LiteralPath (Join-Path $p 'mcp_probe.py')) { 'refusing: IN must be a copy of the inputs'; exit 3 }; $o=Join-Path $p 'pdfcraft_outside'; if (Test-Path -LiteralPath $o) { 'refusing: pdfcraft_outside exists, use a fresh run folder'; exit 4 }; [void](New-Item -ItemType Directory -Path $o); Move-Item -LiteralPath (Join-Path $out 'seed_secret.pdf') -Destination (Join-Path $o 'secret.pdf'); foreach ($n in 'hl_target.pdf','hl_in_target.pdf') { Copy-Item -LiteralPath (Join-Path $o 'secret.pdf') -Destination (Join-Path $o $n) }; Copy-Item -LiteralPath (Join-Path $in 'test_card.png') -Destination (Join-Path $o 'o.png'); foreach ($d in $out,$in) { [void](New-Item -ItemType Junction -Path (Join-Path $d 'jn') -Target $o) }; [void](New-Item -ItemType HardLink -Path (Join-Path $out 'hl.pdf') -Target (Join-Path $o 'hl_target.pdf')); [void](New-Item -ItemType HardLink -Path (Join-Path $in 'hl_in.pdf') -Target (Join-Path $o 'hl_in_target.pdf')); 'setup_ok outside=' + ((Get-ChildItem -Force -LiteralPath $o | Sort-Object Name | ForEach-Object Name) -join ',') + ' links=' + ((@((Join-Path $out 'hl.pdf'), (Join-Path $in 'hl_in.pdf'), (Join-Path $out 'jn'), (Join-Path $in 'jn')) | ForEach-Object { (Get-Item -Force -LiteralPath $_).LinkType }) -join ',')"
+    ],
+    "exit": 0,
+    "stdout_contains": "setup_ok outside=hl_in_target.pdf,hl_target.pdf,o.png,secret.pdf links=HardLink,HardLink,Junction,Junction"
+   }
+  ]
+ },
+ {
+  "tool": "doc_close",
+  "args": {
+   "doc": "${s}"
+  },
+  "expect": [
+   {
+    "json": "/closed",
+    "eq": "${s}"
+   }
+  ]
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "{OUT}/sbx_ok.pdf"
+  },
+  "expect": [
+   {
+    "json": "/incremental",
+    "eq": false
+   },
+   {
+    "file": "{OUT}/sbx_ok.pdf",
+    "min_bytes": 300
+   }
+  ]
+ },
+ {
+  "tool": "doc_create",
+  "args": {
+   "from": "images",
+   "paths": [
+    "{IN}/test_card.png"
+   ]
+  },
+  "expect": [
+   {
+    "json": "/pages",
+    "eq": 1
+   },
+   {
+    "json": "/name",
+    "eq": "test_card.pdf"
+   }
+  ]
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "page_add_image",
+   "arguments": {
+    "doc": "${d}",
+    "page": 1,
+    "path": "{IN}/test_card.jpg",
+    "rect": [
+     72,
+     72,
+     312,
+     207
+    ]
+   }
+  },
+  "expect": [
+   {
+    "json": "/undo",
+    "eq": "Add image"
+   }
+  ]
+ },
+ {
+  "tool": "doc_open",
+  "args": {
+   "path": "{IN}/hl_in.pdf"
+  },
+  "capture": {
+   "h": "/doc"
+  },
+  "expect": [
+   {
+    "json": "/pages",
+    "eq": 1
+   }
+  ]
+ },
+ {
+  "tool": "text_extract",
+  "args": {
+   "doc": "${h}"
+  },
+  "expect": [
+   {
+    "json": "/pages/0/text",
+    "contains": "OUTSIDE SECRET"
+   }
+  ]
+ },
+ {
+  "tool": "doc_close",
+  "args": {
+   "doc": "${h}"
+  },
+  "expect": [
+   {
+    "json": "/closed",
+    "eq": "${h}"
+   }
+  ]
+ },
+ {
+  "tool": "doc_open",
+  "args": {
+   "path": "{OUT}/sbx_ok.pdf"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "doc_open",
+  "args": {
+   "path": "C:/Windows/win.ini"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "{IN}/sbx_write.pdf"
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "{OUT}/../pdfcraft_outside/dotdot.pdf"
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "doc_open",
+  "args": {
+   "path": "{IN}/../pdfcraft_outside/secret.pdf"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "{OUT}/sub/../inner_dotdot.pdf"
+  },
+  "expect": [
+   {
+    "file": "{OUT}/inner_dotdot.pdf",
+    "min_bytes": 300
+   }
+  ]
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "rel_ok.pdf"
+  },
+  "expect": [
+   {
+    "json": "/path",
+    "eq": "rel_ok.pdf"
+   },
+   {
+    "file": "{OUT}/rel_ok.pdf",
+    "min_bytes": 300
+   }
+  ]
+ },
+ {
+  "tool": "doc_open",
+  "args": {
+   "path": "sbx_ok.pdf"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "../pdfcraft_outside/rel_escape.pdf"
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "{OUT}/jn/junction.pdf"
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "doc_open",
+  "args": {
+   "path": "{IN}/jn/secret.pdf"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "page_add_image",
+   "arguments": {
+    "doc": "${d}",
+    "page": 1,
+    "path": "{IN}/jn/o.png",
+    "rect": [
+     72,
+     300,
+     200,
+     428
+    ]
+   }
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "page_insert_file",
+   "arguments": {
+    "doc": "${d}",
+    "path": "{IN}/jn/secret.pdf",
+    "at": 1
+   }
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "doc_open",
+  "args": {
+   "path": "{IN}/JN/secret.pdf"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "{OUT}/jn./case_dot.pdf"
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "\\\\127.0.0.1\\nosuchshare\\x.png"
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "doc_create",
+  "args": {
+   "from": "images",
+   "paths": [
+    "\\\\127.0.0.1\\nosuchshare\\x.png"
+   ]
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "//127.0.0.1/nosuchshare/x.png"
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "doc_open",
+  "args": {
+   "path": "\\\\?\\C:\\Windows\\win.ini"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "doc_open",
+  "args": {
+   "path": "\\\\.\\C:\\Windows\\win.ini"
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "{OUT}/NUL.png"
+  },
+  "expect_error": "reserved device names are not allowed"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "CON"
+  },
+  "expect_error": "reserved device names are not allowed"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "{OUT}/com1.pdf"
+  },
+  "expect_error": "reserved device names are not allowed"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "\\\\.\\NUL"
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "doc_create",
+  "args": {
+   "from": "images",
+   "paths": [
+    "{IN}/NUL.png"
+   ]
+  },
+  "expect_error": "reserved device names are not allowed"
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "doc_export_images",
+   "arguments": {
+    "doc": "${d}",
+    "folder": "{OUT}/AUX"
+   }
+  },
+  "expect_error": "reserved device names are not allowed"
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "{OUT}/sbx_ok.pdf:x"
+  },
+  "expect_error": "os error 87",
+  "expect": [
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "'streams=' + @(Get-Item -LiteralPath '{OUT}/sbx_ok.pdf' -Stream *).Count"
+    ],
+    "exit": 0,
+    "stdout_contains": "streams=1"
+   },
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "$f=Get-Item -Force -LiteralPath '{OUT}/.sbx_ok.pdf'; 'leftover=' + $f.Length + ' hidden=' + $f.Attributes.HasFlag([IO.FileAttributes]::Hidden)"
+    ],
+    "exit": 0,
+    "stdout_contains": "leftover=0 hidden=False"
+   }
+  ]
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "{OUT}/sbx_ok.pdf::$DATA"
+  },
+  "expect_error": "syntax is incorrect"
+ },
+ {
+  "tool": "command_run",
+  "args": {
+   "id": "file.save",
+   "params": {
+    "doc": "${d}",
+    "path": "{IN}/cr.pdf"
+   }
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "command_run",
+  "args": {
+   "id": "file.open",
+   "params": {
+    "path": "C:/Windows/win.ini"
+   }
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "command_batch",
+  "args": {
+   "steps": [
+    {
+     "id": "file.save",
+     "params": {
+      "doc": "${d}",
+      "path": "{OUT}/cb_ok.pdf"
+     }
+    },
+    {
+     "id": "file.save",
+     "params": {
+      "doc": "${d}",
+      "path": "{IN}/cb.pdf"
+     }
+    },
+    {
+     "id": "file.open",
+     "params": {
+      "path": "{IN}/jn/secret.pdf"
+     }
+    }
+   ],
+   "stop_on_error": false
+  },
+  "expect_error": "outside the write root",
+  "expect": [
+   {
+    "json": "/completed",
+    "eq": 1
+   },
+   {
+    "json": "/failed",
+    "eq": 2
+   },
+   {
+    "text_contains": "outside the read root"
+   },
+   {
+    "file": "{OUT}/cb_ok.pdf",
+    "min_bytes": 300
+   }
+  ]
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "doc_save",
+   "arguments": {
+    "doc": "${d}",
+    "path": "{IN}/tc.pdf"
+   }
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "doc_export_office",
+   "arguments": {
+    "doc": "${d}",
+    "path": "{IN}/e.docx"
+   }
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "doc_export_images",
+   "arguments": {
+    "doc": "${d}",
+    "folder": "{OUT}/jn/imgs"
+   }
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "doc_split",
+   "arguments": {
+    "doc": "${d}",
+    "every": 1,
+    "out_dir": "{OUT}/../pdfcraft_outside/split"
+   }
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "page_extract",
+   "arguments": {
+    "doc": "${d}",
+    "pages": [
+     1
+    ],
+    "out": "{OUT}/jn/extract.pdf"
+   }
+  },
+  "expect_error": "outside the write root"
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "attachment_add",
+   "arguments": {
+    "doc": "${d}",
+    "path": "C:/Windows/win.ini"
+   }
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "doc_combine",
+   "arguments": {
+    "paths": [
+     "{IN}/test_card.png",
+     "{IN}/jn/o.png"
+    ],
+    "out": "{OUT}/comb.pdf"
+   }
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "doc_batch",
+   "arguments": {
+    "paths": [
+     "{IN}/jn/secret.pdf"
+    ],
+    "out_dir": "{OUT}/batch",
+    "steps": [
+     "optimize"
+    ]
+   }
+  },
+  "expect_error": "outside the read root"
+ },
+ {
+  "tool": "tool_call",
+  "args": {
+   "name": "js_run",
+   "arguments": {
+    "doc": "${d}",
+    "script": "this.saveAs('{OUT}/../pdfcraft_outside/js.pdf'); 'x'"
+   }
+  },
+  "expect": [
+   {
+    "json": "/error",
+    "contains": "not a callable function"
+   }
+  ]
+ },
+ {
+  "tool": "doc_save",
+  "args": {
+   "doc": "${d}",
+   "path": "{OUT}/hl.pdf"
+  },
+  "expect": [
+   {
+    "run": [
+     "{CLI}",
+     "text",
+     "{OUT}/../pdfcraft_outside/hl_target.pdf"
+    ],
+    "exit": 0,
+    "stdout_contains": "OUTSIDE SECRET"
+   },
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "'same=' + ((Get-FileHash -LiteralPath '{OUT}/hl.pdf').Hash -eq (Get-FileHash -LiteralPath '{OUT}/../pdfcraft_outside/hl_target.pdf').Hash)"
+    ],
+    "exit": 0,
+    "stdout_contains": "same=False"
+   },
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "'target_intact=' + ((Get-FileHash -LiteralPath '{OUT}/../pdfcraft_outside/secret.pdf').Hash -eq (Get-FileHash -LiteralPath '{OUT}/../pdfcraft_outside/hl_target.pdf').Hash)"
+    ],
+    "exit": 0,
+    "stdout_contains": "target_intact=True"
+   },
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "'hl_link=' + (Get-Item -LiteralPath '{OUT}/hl.pdf').LinkType + '|'"
+    ],
+    "exit": 0,
+    "stdout_contains": "hl_link=|"
+   }
+  ]
+ },
+ {
+  "tool": "doc_list",
+  "args": {},
+  "expect": [
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "'outside=' + ((Get-ChildItem -Force -LiteralPath '{OUT}/../pdfcraft_outside' | Sort-Object Name | ForEach-Object Name) -join ',')"
+    ],
+    "exit": 0,
+    "stdout_contains": "outside=hl_in_target.pdf,hl_target.pdf,o.png,secret.pdf"
+   },
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "'in_writes=' + @('sbx_write.pdf','cr.pdf','cb.pdf','tc.pdf','e.docx' | Where-Object { Test-Path -LiteralPath ('{IN}/' + $_) }).Count"
+    ],
+    "exit": 0,
+    "stdout_contains": "in_writes=0"
+   }
+  ]
+ },
+ {
+  "tool": "doc_close",
+  "args": {
+   "doc": "${d}",
+   "discard_changes": true
+  },
+  "expect": [
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "$ErrorActionPreference='Stop'; $n=0; foreach ($j in '{OUT}/jn','{IN}/jn') { $f=[IO.Path]::GetFullPath($j); if ((Get-Item -Force -LiteralPath $f).LinkType -ne 'Junction') { 'not a junction: ' + $f; exit 5 }; [IO.Directory]::Delete($f); if (Test-Path -LiteralPath $f) { $n++ } }; 'junctions_left=' + $n"
+    ],
+    "exit": 0,
+    "stdout_contains": "junctions_left=0"
+   },
+   {
+    "run": [
+     "powershell",
+     "-NoProfile",
+     "-Command",
+     "'outside=' + ((Get-ChildItem -Force -LiteralPath '{OUT}/../pdfcraft_outside' | Sort-Object Name | ForEach-Object Name) -join ',')"
+    ],
+    "exit": 0,
+    "stdout_contains": "outside=hl_in_target.pdf,hl_target.pdf,o.png,secret.pdf"
+   }
+  ]
+ }
+]

@@ -1,0 +1,75 @@
+[
+ {"note": "FilmCraft is unconfinable: this battery runs with NO root flags and cwd = {OUT}, and measures where file calls really go. Setup: fresh outside folders {OUT}_outside and {OUT}/../fc_sb_outside, media copies, a junction {OUT}/junc -> {OUT}_outside, and a project subfolder. Then prove that root flags make the server exit 2 before initialize.", "tool": "project_inspect", "args": {}, "expect": [
+   {"run": ["python", "-c", "import os, shutil, sys, _winapi\no = os.path.abspath(sys.argv[1]); i = os.path.abspath(sys.argv[2])\nside = o + '_outside'; dd = os.path.abspath(os.path.join(o, '..', 'fc_sb_outside'))\nfor d in (side, dd):\n    shutil.rmtree(d, ignore_errors=True); os.makedirs(d)\nfor n in ('rel.fcproj', 'ads.mp4', '.ads2.fcproj', 'wrongext.mov.mp4', 'meta_copy.xmp'):\n    p = os.path.join(o, n)\n    if os.path.lexists(p): os.remove(p)\nfor n in ('newdir', 'missing_dir', 'missing_dir2', 'proj'):\n    shutil.rmtree(os.path.join(o, n), ignore_errors=True)\nos.makedirs(os.path.join(o, 'proj'))\nfor dst in (os.path.join(side, 'outside_clip.mp4'), os.path.join(o, 'rel_clip.mp4'), os.path.join(o, 'meta_copy.mp4')):\n    shutil.copyfile(os.path.join(i, 'test_clip.mp4'), dst)\nj = os.path.join(o, 'junc')\nif not os.path.lexists(j): _winapi.CreateJunction(side, j)\nprint('SETUP_OK')", "{OUT}", "{IN}"], "stdout_contains": "SETUP_OK", "exit": 0},
+   {"run": ["python", "-c", "import subprocess, sys\nok = True\nfor a in (['mcp', '--automation-read-root', sys.argv[2], '--automation-write-root', sys.argv[3]], ['mcp', '--automation-write-root', sys.argv[3]], ['--automation-read-root', sys.argv[2], 'mcp']):\n    r = subprocess.run([sys.argv[1]] + a, stdin=subprocess.DEVNULL, capture_output=True, timeout=30)\n    err = (r.stderr.decode('utf-8', 'replace').strip().splitlines() or [''])[0]\n    print('EXIT', r.returncode, 'INIT' if r.stdout.strip() else 'NOINIT', err)\n    ok = ok and r.returncode == 2 and not r.stdout.strip()\nprint('ROOT_FLAGS_REJECTED' if ok else 'ROOT_FLAGS_ACCEPTED')", "{CLI}", "{IN}", "{OUT}"], "stdout_contains": "ROOT_FLAGS_REJECTED", "exit": 0},
+   {"json": "/activeSequence", "eq": null}
+  ]},
+ {"note": "read outside {IN}/{OUT} by absolute path: allowed", "tool": "media_import", "args": {"paths": ["{OUT}_outside/outside_clip.mp4"]}, "capture": {"item": "/items/0"}, "expect": [
+   {"json": "/errors", "len": 0},
+   {"json": "/items", "len": 1}
+  ]},
+ {"note": "relative import resolves against cwd ({OUT})", "tool": "media_import", "args": {"paths": ["rel_clip.mp4"]}, "capture": {"relitem": "/items/0"}, "expect": [
+   {"json": "/items", "len": 1}
+  ]},
+ {"note": "read through a junction inside {OUT} that points outside: followed", "tool": "media_import", "args": {"paths": ["{OUT}/junc/outside_clip.mp4"]}, "expect": [
+   {"json": "/items", "len": 1}
+  ]},
+ {"note": "a missing file is an isError (os error 2)", "tool": "media_import", "args": {"paths": ["{OUT}_outside/does_not_exist.mp4"]}, "expect_error": "os error 2"},
+ {"tool": "command_run", "args": {"id": "file.newSequenceFromClip", "params": {"items": ["${item}"]}}, "expect": [
+   {"json": "/clips", "len": 2}
+  ]},
+ {"note": "write outside {OUT} by absolute path: allowed", "tool": "command_run", "args": {"id": "file.saveAs", "params": {"path": "{OUT}_outside/outside.fcproj"}}, "expect": [
+   {"file": "{OUT}_outside/outside.fcproj", "min_bytes": 2000}
+  ]},
+ {"note": "write outside {OUT} through '..': allowed", "tool": "command_run", "args": {"id": "file.saveAs", "params": {"path": "{OUT}/../fc_sb_outside/dotdot.fcproj"}}, "expect": [
+   {"file": "{OUT}/../fc_sb_outside/dotdot.fcproj", "min_bytes": 2000}
+  ]},
+ {"note": "write through the junction: lands outside {OUT}", "tool": "command_run", "args": {"id": "file.saveAs", "params": {"path": "{OUT}/junc/via_junction.fcproj"}}, "expect": [
+   {"file": "{OUT}_outside/via_junction.fcproj", "min_bytes": 2000}
+  ]},
+ {"note": "relative save resolves against cwd ({OUT})", "tool": "command_run", "args": {"id": "file.saveAs", "params": {"path": "rel.fcproj"}}, "expect": [
+   {"file": "{OUT}/rel.fcproj", "min_bytes": 2000},
+   {"file_text": "{OUT}/rel.fcproj", "contains": "\"rel_clip.mp4\""}
+  ]},
+ {"note": "saveAs into a missing folder fails (os error 3) and does not create it", "tool": "command_run", "args": {"id": "file.saveAs", "params": {"path": "{OUT}/missing_dir/x.fcproj"}}, "expect_error": "os error 3", "expect": [
+   {"run": ["python", "-c", "import os, sys; print('ABSENT' if not os.path.exists(sys.argv[1]) else 'PRESENT')", "{OUT}/missing_dir"], "stdout_contains": "ABSENT", "exit": 0}
+  ]},
+ {"note": "interchange export into a missing folder fails too (os error 3)", "tool": "command_run", "args": {"id": "file.exportFcpxml", "params": {"path": "{OUT}/missing_dir2/x.fcpxml"}}, "expect_error": "os error 3"},
+ {"note": "exportMedia creates missing folders", "tool": "command_run", "args": {"id": "file.exportMedia", "params": {"path": "{OUT}/newdir/sub/e.mp4", "format": "h264", "startSeconds": 0, "endSeconds": 0.5, "wait": true}}, "timeout": 120, "expect": [
+   {"json": "/result/frames", "eq": 12},
+   {"media": "{OUT}/newdir/sub/e.mp4", "codec": "h264", "frames": 12}
+  ]},
+ {"note": "a ':' in an exportMedia path writes an NTFS alternate stream, returns ok, and leaves a 0-byte visible file", "tool": "command_run", "args": {"id": "file.exportMedia", "params": {"path": "{OUT}/ads.mp4:stream", "format": "h264", "startSeconds": 0, "endSeconds": 0.5, "wait": true}}, "timeout": 120, "expect": [
+   {"json": "/result/path", "contains": "ads.mp4:stream.mp4"},
+   {"run": ["python", "-c", "import os, sys; a = os.path.getsize(sys.argv[1]); s = os.path.getsize(sys.argv[1] + ':stream.mp4'); print('VISIBLE', a, 'STREAM_OK' if s > 50000 else 'STREAM_SMALL', s)", "{OUT}/ads.mp4"], "stdout_contains": "VISIBLE 0 STREAM_OK", "exit": 0}
+  ]},
+ {"note": "a ':' in a save path fails (os error 87) and leaves a stray 0-byte '.<name>' file", "tool": "command_run", "args": {"id": "file.saveAs", "params": {"path": "{OUT}/ads2.fcproj:hidden"}}, "expect_error": "os error 87", "expect": [
+   {"file": "{OUT}/.ads2.fcproj", "min_bytes": 0}
+  ]},
+ {"note": "a device name is refused by the OS (os error 1), not by the app", "tool": "command_run", "args": {"id": "file.saveAs", "params": {"path": "NUL"}}, "expect_error": "os error 1"},
+ {"note": "a wrong extension gets the container's appended", "tool": "command_run", "args": {"id": "file.exportMedia", "params": {"path": "{OUT}/wrongext.mov", "format": "h264", "startSeconds": 0, "endSeconds": 0.5, "wait": true}}, "timeout": 120, "expect": [
+   {"json": "/result/path", "contains": "wrongext.mov.mp4"},
+   {"file": "{OUT}/wrongext.mov.mp4", "min_bytes": 10000}
+  ]},
+ {"note": "clip.updateMetadata writes <stem>.xmp next to the SOURCE media (run here on a copy in {OUT})", "tool": "media_import", "args": {"paths": ["{OUT}/meta_copy.mp4"]}, "capture": {"metaitem": "/items/0"}},
+ {"tool": "command_run", "args": {"id": "clip.updateMetadata", "params": {"items": ["${metaitem}"]}}, "expect": [
+   {"file": "{OUT}/meta_copy.xmp", "min_bytes": 100}
+  ]},
+ {"note": "relative media paths are stored verbatim in the project", "tool": "command_run", "args": {"id": "file.saveAs", "params": {"path": "{OUT}/proj/relmedia.fcproj"}}, "expect": [
+   {"file_text": "{OUT}/proj/relmedia.fcproj", "contains": "\"rel_clip.mp4\""}
+  ]},
+ {"restart": true},
+ {"note": "fresh process: nothing open, so the reopen below reads only what is on disk", "tool": "project_inspect", "args": {}, "expect": [
+   {"json": "/path", "eq": null},
+   {"json": "/activeSequence", "eq": null}
+  ]},
+ {"note": "on reopen a relative media path resolves against the project's folder, not cwd: offline here", "tool": "command_run", "args": {"id": "file.open", "params": {"path": "{OUT}/proj/relmedia.fcproj"}}, "expect": [
+   {"json": "/missingMedia", "eq": 1}
+  ]},
+ {"note": "the same relative path in a project saved in {OUT} (next to the media) is found", "tool": "command_run", "args": {"id": "file.open", "params": {"path": "{OUT}/rel.fcproj"}}, "expect": [
+   {"json": "/missingMedia", "eq": 0}
+  ]},
+ {"note": "the same project saved outside {OUT} (via '..') reopens with its absolute-path media, but the relative item is offline there too", "tool": "command_run", "args": {"id": "file.open", "params": {"path": "{OUT}/../fc_sb_outside/dotdot.fcproj"}}, "expect": [
+   {"json": "/missingMedia", "eq": 1}
+  ]}
+]
